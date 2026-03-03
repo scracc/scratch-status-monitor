@@ -28,10 +28,10 @@
   ],
   "author": "scratchcore",
   "license": "Apache-2.0",
-  "packageManager": "pnpm@10.30.0",
+  "packageManager": "pnpm@10.30.3",
   "devDependencies": {
     "@biomejs/biome": "2.4.0",
-    "@types/node": "^22.19.11",
+    "@types/node": "^22.19.13",
     "typescript": "^5.9.3"
   },
   "dependencies": {

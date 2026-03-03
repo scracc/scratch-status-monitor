@@ -31,15 +31,15 @@
   ],
   "author": "scratchcore",
   "license": "Apache-2.0",
-  "packageManager": "pnpm@10.30.0",
+  "packageManager": "pnpm@10.30.3",
   "dependencies": {
-    "@tanstack/react-router": "^1.160.2",
+    "@tanstack/react-router": "^1.163.3",
     "react": "^19.2.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.0",
-    "@types/node": "^22.19.11",
+    "@types/node": "^22.19.13",
     "@types/react": "^19.2.14",
     "typescript": "^5.9.3"
   }
