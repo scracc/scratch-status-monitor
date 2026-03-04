@@ -3,6 +3,10 @@ payment_at: 2026-02-08T15:00:00.000Z
 from: "Cloudflare, Inc."
 standard: "JAPAN"
 tax_percent: 10.0
+paid:
+  currency: "JPY"
+  amount: 707.00
+  by: "Toa Kiryu"
 items:
   - name: "Remaining time on Workers Paid after 09 Feb 2026"
     price: 3.93

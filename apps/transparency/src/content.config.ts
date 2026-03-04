@@ -9,6 +9,11 @@ const expenses = defineCollection({
     from: z.string(),
     standard: z.string(),
     tax_percent: z.number(),
+    paid: z.object({
+      currency: z.string(),
+      amount: z.number(),
+      by: z.string(),
+    }),
     items: z.array(
       z.object({
         name: z.string(),
