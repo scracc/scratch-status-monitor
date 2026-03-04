@@ -35,10 +35,13 @@ jobs:
       - name: Check for changes
         if: github.event_name != 'workflow_dispatch'
         run: |
-          git fetch origin --depth=1
-          BASE="${{ github.base_ref }}"
-          [ -z "$BASE" ] && BASE="origin/${{ github.ref_name }}"
-          git diff --quiet "$BASE...HEAD" -- ${{ env.BUILD_PATH }} ${{ env.DATA_PATH }} && echo "skip=true" >> $GITHUB_ENV || true
+          # pushイベントでは前のコミットと比較
+          if [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            git diff --quiet ${{ github.event.before }} ${{ github.sha }} -- ${{ env.BUILD_PATH }} ${{ env.DATA_PATH }} && echo "skip=true" >> $GITHUB_ENV || true
+          else
+            # 初回pushまたはforce pushの場合はスキップしない
+            echo "skip=false" >> $GITHUB_ENV
+          fi
 
       - name: Override skip with manual flag
         if: github.event_name == 'workflow_dispatch' && inputs.force_run == 'true'
