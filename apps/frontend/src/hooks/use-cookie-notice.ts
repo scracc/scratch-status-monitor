@@ -43,7 +43,14 @@ export const useCookieNoticeVisible = (days: number = 365) => {
 
   const notice = data?.[0];
 
-  const isOpen = !notice || (Date.now() - notice.closedAt) / (1000 * 60 * 60 * 24) >= days;
+  // 期限切れ
+  const isExpired = notice && (Date.now() - notice.closedAt) / (1000 * 60 * 60 * 24) >= days;
+  if (isExpired) {
+    // 期限切れの場合はレコードを削除して再表示させる
+    cookieNoticeCollection.delete("cookie-notice");
+  }
+
+  const isOpen = !notice || isExpired;
 
   return {
     isOpen,

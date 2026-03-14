@@ -1,5 +1,6 @@
 import { BProgress } from "@bprogress/core";
 import { initHeadControllerConfigs } from "@scracc/tanstack-plugin-headcontroller";
+import * as Sentry from "@sentry/tanstackstart-react";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import * as TanstackQuery from "./integrations/tanstack-query/root-provider";
@@ -23,6 +24,16 @@ export const getRouter = () => {
     defaultPreload: "intent",
     defaultNotFoundComponent: NotFoundComponent,
   });
+
+  if (!router.isServer) {
+    Sentry.init({
+      dsn: "https://9f38c35ec7dc4887f3425eb602d0eb75@o4511041204781056.ingest.us.sentry.io/4511041216643072",
+
+      // Adds request headers and IP for users, for more info visit:
+      // https://docs.sentry.io/platforms/javascript/guides/tanstackstart-react/configuration/options/#sendDefaultPii
+      sendDefaultPii: true,
+    });
+  }
 
   setupRouterSsrQueryIntegration({
     router,

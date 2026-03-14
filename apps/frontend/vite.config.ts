@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from "node:url";
 import contentCollections from "@content-collections/vite";
+import { sentryTanstackStart } from "@sentry/tanstackstart-react/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -45,6 +46,11 @@ const config = defineConfig({
       router: {
         routeFileIgnorePattern: ".content.(ts|tsx|js|mjs|cjs|jsx|json|jsonc|json5)$",
       },
+    }),
+    sentryTanstackStart({
+      org: "scracc",
+      project: "ssm",
+      authToken: process.env.SENTRY_AUTH_TOKEN,
     }),
     sitemapPlugin(),
     nitro(),
