@@ -1,11 +1,15 @@
 import { BProgress } from "@bprogress/core";
 import { initHeadControllerConfigs } from "@scracc/tanstack-plugin-headcontroller";
+import * as Sentry from "@sentry/tanstackstart-react";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import * as TanstackQuery from "./integrations/tanstack-query/root-provider";
+import { getEnv } from "./plugins/envrc";
 import { NotFoundComponent } from "./routes/$locale/404";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
+
+const env = getEnv();
 
 const headControllerConfig = initHeadControllerConfigs();
 
@@ -36,6 +40,17 @@ export const getRouter = () => {
   router.subscribe("onLoad", () => {
     BProgress.done();
   });
+
+  if (!router.isServer) {
+    Sentry.init({
+      dsn: env.VITE_SENTRY_DSN,
+      environment: env.ENVIRONMENT,
+      integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
+      enableLogs: true,
+      sendDefaultPii: true,
+      tunnel: "/tunnel",
+    });
+  }
 
   return router;
 };

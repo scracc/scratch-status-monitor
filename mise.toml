@@ -1,0 +1,4 @@
+experimental_monorepo_root = true
+
+[tools]
+node = "24.1.0"

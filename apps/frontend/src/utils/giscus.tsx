@@ -13,7 +13,7 @@ export function GiscusWidget() {
       <div className="relative max-h-[1500px] overflow-y-auto scrollbar-simple">
         <Giscus
           id="giscus-widget"
-          repo="scratchcore/scratch-status-monitor"
+          repo="scracc/scratch-status-monitor"
           repoId="R_kgDOPZOm6A"
           mapping="number"
           term="1"

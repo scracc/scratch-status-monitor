@@ -1,15 +1,17 @@
 import { createIsomorphicFn } from "@tanstack/react-start";
-import pino from "pino";
+import { Logger } from "tslog";
+
+const isDevelopmentRuntime =
+  process.env.ENVIRONMENT === "development" || process.env.NODE_ENV === "development";
 
 const _logger = {
-  prod: pino({
-    name: "DEF",
+  prod: new Logger<unknown>({
+    type: "json",
   }),
-  dev: pino({
-    name: "DEF",
-    transport: {
-      target: "pino-pretty",
-    },
+  dev: new Logger<unknown>({
+    type: "pretty",
+    prettyLogTemplate:
+      "{{yyyy}}-{{mm}}-{{dd}} {{hh}}:{{MM}}:{{ss}}.{{ms}} {{logLevelName}} {{name}}",
   }),
 };
 
@@ -21,14 +23,15 @@ interface LoggerOptions {
 }
 
 const writeLog = ({ level, name = "DEF" }: LoggerOptions, msg: string, ...args: unknown[]) => {
-  const target = process.env.NODE_ENV === "development" ? _logger.dev : _logger.prod;
+  const target = isDevelopmentRuntime ? _logger.dev : _logger.prod;
+  const scopedLogger = name === "DEF" ? target : target.getSubLogger({ name });
 
   if (args.length === 0) {
-    target[level]({ name }, msg);
+    scopedLogger[level](msg);
     return;
   }
 
-  target[level]({ name, data: args.length === 1 ? args[0] : args }, msg);
+  scopedLogger[level](msg, args.length === 1 ? args[0] : { data: args });
 };
 
 const logger = createIsomorphicFn().server(writeLog).client(writeLog);
