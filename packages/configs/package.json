@@ -32,7 +32,10 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.0",
     "@scracc/ssm-types": "workspace:*",
-    "@types/node": "^25.5.0",
+    "@types/node": "^24.1.0",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

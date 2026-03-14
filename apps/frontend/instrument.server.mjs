@@ -1,9 +1,17 @@
 import * as Sentry from "@sentry/tanstackstart-react";
 
-Sentry.init({
-  dsn: "https://9f38c35ec7dc4887f3425eb602d0eb75@o4511041204781056.ingest.us.sentry.io/4511041216643072",
+const sentryDsn = import.meta.env?.VITE_SENTRY_DSN ?? process.env.VITE_SENTRY_DSN;
 
-  // Setting this option to true will send default PII data to Sentry.
-  // For example, automatic IP address collection on events
-  sendDefaultPii: true,
-});
+if (!sentryDsn) {
+  console.warn("VITE_SENTRY_DSN is not defined. Sentry is not running.");
+} else {
+  Sentry.init({
+    dsn: sentryDsn,
+    // Adds request headers and IP for users, for more info visit:
+    // https://docs.sentry.io/platforms/javascript/guides/tanstackstart-react/configuration/options/#sendDefaultPii
+    sendDefaultPii: true,
+    tracesSampleRate: 1.0,
+    replaysSessionSampleRate: 1.0,
+    replaysOnErrorSampleRate: 1.0,
+  });
+}

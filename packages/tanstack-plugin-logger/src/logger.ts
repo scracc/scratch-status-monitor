@@ -1,16 +1,23 @@
 import { createIsomorphicFn } from "@tanstack/react-start";
 import pino from "pino";
+import pretty from "pino-pretty";
+
+const isDevelopmentRuntime =
+  process.env.ENVIRONMENT === "development" || process.env.NODE_ENV === "development";
 
 const _logger = {
   prod: pino({
     name: "DEF",
   }),
-  dev: pino({
-    name: "DEF",
-    transport: {
-      target: "pino-pretty",
-    },
-  }),
+  // Avoid pino transport worker in ESM SSR bundles, use stream mode instead.
+  dev: pino(
+    pretty({
+      colorize: true,
+      translateTime: "SYS:standard",
+      ignore: "pid,hostname",
+      messageFormat: "{msg}",
+    })
+  ),
 };
 
 type LogLevel = "debug" | "info" | "warn" | "error";
@@ -21,7 +28,7 @@ interface LoggerOptions {
 }
 
 const writeLog = ({ level, name = "DEF" }: LoggerOptions, msg: string, ...args: unknown[]) => {
-  const target = process.env.NODE_ENV === "development" ? _logger.dev : _logger.prod;
+  const target = isDevelopmentRuntime ? _logger.dev : _logger.prod;
 
   if (args.length === 0) {
     target[level]({ name }, msg);

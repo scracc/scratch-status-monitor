@@ -26,6 +26,27 @@ const envrc = defineConfig({
       masked: true,
       description: "外部APIの認証トークン",
     },
+    VITE_SENTRY_DSN: {
+      type: "url",
+      required: true,
+      description: "SentryのDSN（Data Source Name）",
+    },
+    VITE_SENTRY_ORG: {
+      type: "text",
+      required: true,
+      description: "Sentryの組織スラッグ",
+    },
+    VITE_SENTRY_PROJECT: {
+      type: "text",
+      required: true,
+      description: "Sentryのプロジェクトスラッグ",
+    },
+    SENTRY_AUTH_TOKEN: {
+      type: "text",
+      required: true,
+      masked: true,
+      description: "Sentryの認証トークン",
+    },
   },
 });
 
