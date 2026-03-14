@@ -32,6 +32,8 @@ export const getRouter = () => {
     Sentry.init({
       dsn: env.VITE_SENTRY_DSN,
       environment: env.ENVIRONMENT,
+      integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
+      enableLogs: true,
       sendDefaultPii: true,
       tunnel: "/tunnel",
     });

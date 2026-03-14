@@ -8,20 +8,17 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import { intlayer } from "vite-intlayer";
-import tsConfigPaths from "vite-tsconfig-paths";
 import { envCheckPlugin } from "./src/plugins/envrc/vite-plugin";
 import { sitemapPlugin } from "./src/plugins/sitemap/vite-plugin";
 
 const config = defineConfig({
   resolve: {
+    tsconfigPaths: true,
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
   plugins: [
-    tsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
     envCheckPlugin(), // 環境変数チェックを最初に実行
     intlayer(),
     contentCollections(),
