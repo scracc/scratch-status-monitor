@@ -28,17 +28,6 @@ export const getRouter = () => {
     defaultNotFoundComponent: NotFoundComponent,
   });
 
-  if (!router.isServer) {
-    Sentry.init({
-      dsn: env.VITE_SENTRY_DSN,
-      environment: env.ENVIRONMENT,
-      integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
-      enableLogs: true,
-      sendDefaultPii: true,
-      tunnel: "/tunnel",
-    });
-  }
-
   setupRouterSsrQueryIntegration({
     router,
     queryClient: rqContext.queryClient,
@@ -51,6 +40,17 @@ export const getRouter = () => {
   router.subscribe("onLoad", () => {
     BProgress.done();
   });
+
+  if (!router.isServer) {
+    Sentry.init({
+      dsn: env.VITE_SENTRY_DSN,
+      environment: env.ENVIRONMENT,
+      integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
+      enableLogs: true,
+      sendDefaultPii: true,
+      tunnel: "/tunnel",
+    });
+  }
 
   return router;
 };
