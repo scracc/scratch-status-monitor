@@ -195,6 +195,9 @@ importers:
       deepmerge:
         specifier: ^4.3.1
         version: 4.3.1
+      h3:
+        specifier: 2.0.1-rc.16
+        version: 2.0.1-rc.16(crossws@0.4.4(srvx@0.11.9))
       intlayer:
         specifier: ^8.3.1
         version: 8.3.1(react@19.2.4)(typescript@5.9.3)(zod@4.3.6)

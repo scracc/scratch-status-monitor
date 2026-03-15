@@ -29,7 +29,7 @@ const content = defineCollection({
 const policies = defineCollection({
   name: "policies",
   directory: "policies",
-  include: ["**/*.md"],
+  include: "**/*.md",
   schema: z.object({
     title: z.string(),
     updated_at: z.string(),
@@ -45,5 +45,5 @@ const policies = defineCollection({
 });
 
 export default defineConfig({
-  collections: [content, policies],
+  content: [content, policies],
 });

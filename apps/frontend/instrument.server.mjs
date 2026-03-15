@@ -17,5 +17,6 @@ if (!sentryDsn) {
     tracesSampleRate: 1.0,
     replaysSessionSampleRate: 1.0,
     replaysOnErrorSampleRate: 1.0,
+    tunnel: "/api/sentry-tunnel",
   });
 }

@@ -48,7 +48,7 @@ export const getRouter = () => {
       integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
       enableLogs: true,
       sendDefaultPii: true,
-      tunnel: "/tunnel",
+      tunnel: "/api/sentry-tunnel",
     });
   }
 
