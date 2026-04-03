@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../../apps/transparency/.astro/collections/expenses.schema.json
+payment_at: 2026-04-02T15:00:00.000Z
+from: "Cloudflare, Inc."
+standard: "JAPAN"
+tax_percent: 10.0
+paid:
+  currency: "JPY"
+  amount: 914.00
+  by: "Toa Kiryu"
+items:
+  - name: "Workers Paid"
+    price: 5.00
+    quantity: 1
+    period:
+      start_at: 2026-04-02T15:00:00.000Z
+      end_at: 2026-05-01T15:00:00.000Z
