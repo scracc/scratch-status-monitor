@@ -52,8 +52,8 @@ jobs:
         uses: withastro/action@v5
         with:
           path: ${{ env.BUILD_PATH }} # リポジトリ内のAstroプロジェクトのルート位置です。（オプション）
-          # node-version: 24 # サイトのビルドに使用するNodeのバージョンです。デフォルトは22です。（オプション）
-          package-manager: pnpm@latest # 依存関係のインストールとサイトのビルドに使用するNodeパッケージマネージャーです。ロックファイルに基づいて自動検出されます。（オプション）
+          node-version: 24 # サイトのビルドに使用するNodeのバージョンです。デフォルトは22です。（オプション）
+          package-manager: pnpm # 依存関係のインストールとサイトのビルドに使用するNodeパッケージマネージャーです。ロックファイルに基づいて自動検出されます。（オプション）
           # build-cmd: pnpm run build # サイトをビルドするためのコマンドです。デフォルトでパッケージのbuildスクリプトを実行します。（オプション）
         # env:
         # PUBLIC_POKEAPI: 'https://pokeapi.co/api/v2' # 変数の値にはシングルクォートを使用してください。（オプション）
