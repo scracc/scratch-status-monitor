@@ -1,6 +1,88 @@
 import type { Context, MiddlewareHandler } from "hono";
-import { bearerAuth } from "hono/bearer-auth";
+import { authenticateApiToken } from "../services/tokenService";
+import type { AuthTokenPrincipal } from "../types/auth";
 import type { Env } from "../types/env";
+
+interface RateWindow {
+  startedAt: number;
+  count: number;
+}
+
+const RATE_WINDOW_MS = 60_000;
+const rateWindows = new Map<string, RateWindow>();
+
+function isBypassedPath(environment: Env["ENVIRONMENT"], path: string): boolean {
+  if (environment !== "development") {
+    return false;
+  }
+
+  const isTestRoute = path.startsWith("/test/");
+  const isDebugRoute = path.startsWith("/debug/");
+  const isDocsRoute = path === "/docs" || path.startsWith("/docs/") || path === "/openapi.json";
+  const isRootRoute = path === "/";
+
+  return isTestRoute || isDebugRoute || isDocsRoute || isRootRoute;
+}
+
+type AuthErrorStatus = 401 | 403 | 429 | 503;
+
+function jsonError(c: Context, message: string, status: AuthErrorStatus): Response {
+  return c.json(
+    {
+      success: false,
+      message,
+    },
+    status
+  );
+}
+
+function extractBearerToken(authorizationHeader?: string): string | null {
+  if (!authorizationHeader) {
+    return null;
+  }
+
+  const [scheme, token] = authorizationHeader.split(" ");
+  if (!scheme || !token || scheme.toLowerCase() !== "bearer") {
+    return null;
+  }
+
+  return token;
+}
+
+function consumeRateLimit(tokenKey: string, limit: number) {
+  const now = Date.now();
+  const existing = rateWindows.get(tokenKey);
+
+  if (!existing || now - existing.startedAt >= RATE_WINDOW_MS) {
+    const next: RateWindow = { startedAt: now, count: 1 };
+    rateWindows.set(tokenKey, next);
+    return {
+      allowed: true,
+      limit,
+      remaining: limit - 1,
+      resetAt: next.startedAt + RATE_WINDOW_MS,
+      retryAfter: 0,
+    };
+  }
+
+  existing.count += 1;
+  const allowed = existing.count <= limit;
+  const resetAt = existing.startedAt + RATE_WINDOW_MS;
+
+  return {
+    allowed,
+    limit,
+    remaining: Math.max(0, limit - existing.count),
+    resetAt,
+    retryAfter: Math.max(1, Math.ceil((resetAt - now) / 1000)),
+  };
+}
+
+function setRateLimitHeaders(c: Context, limit: number, remaining: number, resetAt: number): void {
+  c.header("X-RateLimit-Limit", String(limit));
+  c.header("X-RateLimit-Remaining", String(remaining));
+  c.header("X-RateLimit-Reset", String(Math.floor(resetAt / 1000)));
+}
 
 /**
  * Bearer 認証ミドルウェア
@@ -14,49 +96,43 @@ import type { Env } from "../types/env";
  * - ドキュメントルート (/docs, /openapi.json) は認証なし
  * - その他のルートには認証を適用
  */
-export function createBearerAuthMiddleware(): MiddlewareHandler<{ Bindings: Env }> {
-  return async (c: Context<{ Bindings: Env }>, next) => {
-    const token = c.env.API_TOKEN;
+export function createBearerAuthMiddleware(): MiddlewareHandler<{
+  Bindings: Env;
+  Variables: { auth: AuthTokenPrincipal };
+}> {
+  return async (c: Context<{ Bindings: Env; Variables: { auth: AuthTokenPrincipal } }>, next) => {
     const environment = c.env.ENVIRONMENT || "development";
-    const path = c.req.path;
-
-    // トークンが設定されていない場合
-    if (!token) {
-      // 本番環境では fail-closed（全ルートを拒否）
-      if (environment === "production") {
-        console.error(
-          "API_TOKEN is not set in production. All requests are blocked until API_TOKEN is configured."
-        );
-        return c.json(
-          {
-            success: false,
-            message: "API authentication is not configured",
-          },
-          { status: 503 }
-        );
-      }
-
-      // 開発環境では認証をスキップ
-      console.warn(
-        "API_TOKEN is not set. Bearer authentication is disabled. Set API_TOKEN in environment variables to enable authentication."
-      );
+    if (isBypassedPath(environment, c.req.path)) {
       return next();
     }
 
-    // 開発環境では特定のパスを認証から除外
-    if (environment === "development") {
-      const isTestRoute = path.startsWith("/test/");
-      const isDebugRoute = path.startsWith("/debug/");
-      const isDocsRoute = path === "/docs" || path.startsWith("/docs/") || path === "/openapi.json";
-      const isRootRoute = path === "/";
-
-      if (isTestRoute || isDebugRoute || isDocsRoute || isRootRoute) {
-        return next();
-      }
+    const rawToken = extractBearerToken(c.req.header("Authorization"));
+    if (!rawToken) {
+      return jsonError(c, "Bearer トークンが必要です", 401);
     }
 
-    // Bearer 認証を適用
-    const authMiddleware = bearerAuth({ token });
-    return authMiddleware(c, next);
+    let principal: AuthTokenPrincipal | null = null;
+    try {
+      principal = await authenticateApiToken(rawToken, c.env);
+    } catch (error) {
+      console.error("Failed to authenticate token", error);
+      return jsonError(c, "認証サービスに接続できません", 503);
+    }
+
+    if (!principal) {
+      return jsonError(c, "無効または期限切れのトークンです", 401);
+    }
+
+    const tokenKey = principal.tokenId ?? "legacy";
+    const rateLimit = consumeRateLimit(tokenKey, principal.rateLimitPerMinute);
+    setRateLimitHeaders(c, rateLimit.limit, rateLimit.remaining, rateLimit.resetAt);
+
+    if (!rateLimit.allowed) {
+      c.header("Retry-After", String(rateLimit.retryAfter));
+      return jsonError(c, "レート制限を超過しました", 429);
+    }
+
+    c.set("auth", principal);
+    await next();
   };
 }

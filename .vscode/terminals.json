@@ -23,6 +23,22 @@
       "cwd": "./apps/backend"
     },
     {
+      "name": "Discord Bot > root",
+      "cwd": "./apps/discord-bot"
+    },
+    {
+      "name": "Discord Bot > server",
+      "cwd": "./apps/discord-bot"
+    },
+    {
+      "name": "Dashboard > root",
+      "cwd": "./apps/dashboard"
+    },
+    {
+      "name": "Dashboard > server",
+      "cwd": "./apps/dashboard"
+    },
+    {
       "name": "Frontend > root",
       "cwd": "./apps/frontend"
     },

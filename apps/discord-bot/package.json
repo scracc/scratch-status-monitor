@@ -1,0 +1,33 @@
+{
+  "name": "@repo/discord-bot",
+  "type": "module",
+  "scripts": {
+    "lint": "biome lint src/",
+    "lint:fix": "biome check --fix src/",
+    "format": "biome format --write src/",
+    "check": "biome check src/",
+    "dev": "wrangler dev",
+    "ngrok": "ngrok http 8787",
+    "start": "run-p --print-label dev ngrok",
+    "deploy": "wrangler deploy --minify --env production",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "deploy:commands": "nlx tsx src/discord/register.ts"
+  },
+  "dependencies": {
+    "discord-api-types": "^0.38.46",
+    "discord-interactions": "^4.4.0",
+    "hono": "^4.12.7",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.0",
+    "@cloudflare/workers-types": "^4.20260313.1",
+    "@types/node": "^24.1.0",
+    "dotenv": "^17.4.2",
+    "npm-run-all2": "^8.0.4",
+    "wrangler": "^4.73.0"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

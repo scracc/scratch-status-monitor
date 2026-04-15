@@ -1,6 +1,5 @@
-import { HistoryResponse, HistoryStats, StatusResponse } from "@scracc/ssm-types";
-import { type Context, Hono } from "hono";
-import { z } from "zod";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import type { Context } from "hono";
 import {
   getAllMonitorsHistoryHandler,
   getMonitorHistoryHandler,
@@ -14,24 +13,97 @@ import {
   getCronAlignedTtlSeconds,
 } from "../services/cdnCacheService";
 import { createLogger } from "../services/logger";
-import { registerEndpoint } from "../types/api-metadata";
+import {
+  createManagedToken,
+  listManagedTokens,
+  revokeManagedTokenById,
+  updateManagedTokenById,
+} from "../services/tokenService";
+import type { AuthTokenPrincipal } from "../types/auth";
 import type { Env } from "../types/env";
 import { UUIDSchema } from "../utils/validators";
 
 const logger = createLogger("API");
+const monitorIdSchema = UUIDSchema;
+const historyQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+const statsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
+});
 
-const shouldBypassCache = (c: Context<{ Bindings: Env }>) =>
-  c.req.header("x-cache-bust") === "1" || c.req.query("cache-bust") === "1";
+const shouldBypassCache = (
+  c: Context<{ Bindings: Env; Variables: { auth: AuthTokenPrincipal } }>
+) => c.req.header("x-cache-bust") === "1" || c.req.query("cache-bust") === "1";
+
+const managedTokenSchema = z.object({
+  id: UUIDSchema,
+  name: z.string(),
+  tokenPrefix: z.string(),
+  isActive: z.boolean(),
+  isAdmin: z.boolean(),
+  rateLimitPerMinute: z.number().int(),
+  settings: z.record(z.string(), z.any()),
+  lastUsedAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const createManagedTokenBodySchema = z.object({
+  name: z.string().min(1).max(120),
+  isAdmin: z.boolean().optional(),
+  rateLimitPerMinute: z.number().int().min(1).max(60_000).optional(),
+  settings: z.record(z.string(), z.any()).optional(),
+  expiresAt: z.iso.datetime().nullable().optional(),
+});
+
+const updateManagedTokenBodySchema = z
+  .object({
+    name: z.string().min(1).max(120).optional(),
+    isActive: z.boolean().optional(),
+    isAdmin: z.boolean().optional(),
+    rateLimitPerMinute: z.number().int().min(1).max(60_000).optional(),
+    settings: z.record(z.string(), z.any()).optional(),
+    expiresAt: z.iso.datetime().nullable().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: "更新項目を1つ以上指定してください",
+  });
 
 /**
  * ルータ
  * ステータス・履歴・統計情報に関するエンドポイントを提供
  */
 export const createApiRouter = () => {
-  const router = new Hono();
+  const router = new OpenAPIHono<{ Bindings: Env; Variables: { auth: AuthTokenPrincipal } }>();
 
-  const _cacheableHandler = (handler: (c: Context<{ Bindings: Env }>) => Promise<Response>) => {
-    return async (c: Context<{ Bindings: Env }>) => {
+  router.doc("/openapi.json", {
+    openapi: "3.0.0",
+    info: {
+      title: "Scratch Status Monitor API",
+      version: "1.0.0",
+      description: "Scratchサービスの稼働状況を監視するAPI",
+    },
+    servers: [
+      {
+        url: "/",
+        description: "開発環境",
+      },
+      {
+        url: "https://api.ssm.scra.cc/",
+        description: "本番環境",
+      },
+    ],
+  });
+
+  const _cacheableHandler = <T extends Response>(
+    handler: (c: Context<{ Bindings: Env; Variables: { auth: AuthTokenPrincipal } }>) => Promise<T>
+  ) => {
+    return async (
+      c: Context<{ Bindings: Env; Variables: { auth: AuthTokenPrincipal } }>
+    ): Promise<T> => {
       const isBypass = shouldBypassCache(c);
       const cache = await caches.open(CACHE_NAMESPACE);
 
@@ -40,7 +112,7 @@ export const createApiRouter = () => {
         const cached = await cache.match(cacheKey);
         if (cached) {
           logger.info("CACHE HIT", { url: c.req.url });
-          return cached;
+          return cached as T;
         }
         logger.info("CACHE MISS", { url: c.req.url });
       } else {
@@ -62,158 +134,135 @@ export const createApiRouter = () => {
     };
   };
 
-  /**
-   * ステータスエンドポイント
-   */
-  // GET api:status - 現在のステータスを取得
-  registerEndpoint({
+  const successSchema = z.object({
+    success: z.literal(true),
+  });
+
+  const requireAdmin = (c: Context<{ Bindings: Env; Variables: { auth: AuthTokenPrincipal } }>) => {
+    const auth = c.get("auth");
+    if (!auth.isAdmin) {
+      return c.json(
+        {
+          success: false,
+          message: "admin 権限が必要です",
+        },
+        403
+      );
+    }
+
+    return null;
+  };
+
+  const statusRoute = createRoute({
     method: "get",
     path: "/status",
     tags: ["Status"],
     summary: "現在のステータスを取得",
     description: "全モニターの最新ステータスを取得します（キャッシュ対応）",
-    operationId: "getStatus",
     responses: {
-      "200": {
-        schema: StatusResponse,
+      200: {
         description: "ステータス取得成功",
-      },
-      "500": {
-        description: "サーバーエラー",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: z.any(),
+            }),
+          },
+        },
       },
     },
   });
 
-  router.get(
-    "/status",
+  router.openapi(
+    statusRoute,
     _cacheableHandler(async (c) => {
       const status = await getStatusHandler();
-      return c.json({
-        success: true,
-        data: status,
-      });
+      return c.json(
+        {
+          success: true,
+          data: status,
+        },
+        200
+      );
     })
   );
 
-  // // POST api:status/refresh - ステータスを強制更新
-  // registerEndpoint({
-  //   method: "post",
-  //   path: "/status/refresh",
-  //   tags: ["Status"],
-  //   summary: "ステータスを強制更新",
-  //   description: "全モニターを再チェックして最新ステータスを取得",
-  //   operationId: "refreshStatus",
-  //   responses: {
-  //     "200": {
-  //       schema: StatusResponse,
-  //       description: "ステータス更新成功",
-  //     },
-  //     "500": {
-  //       description: "サーバーエラー",
-  //     },
-  //   },
-  // });
-
-  // router.post("/status/refresh", async (c) => {
-  //   const status = await refreshStatusHandler();
-  //   return c.json({
-  //     success: true,
-  //     data: status,
-  //     message: "Status refreshed successfully",
-  //   });
-  // });
-
-  /**
-   * 履歴エンドポイント
-   */
-  // GET api:history - 全モニターの履歴を取得
-  registerEndpoint({
+  const historyRoute = createRoute({
     method: "get",
     path: "/history",
     tags: ["History"],
     summary: "全モニターの履歴を取得",
     description: "全てのモニターの履歴を取得します（ページング対応）",
-    operationId: "getAllHistory",
-    parameters: {
-      query: {
-        limit: z.number().int().min(1).max(1000).default(100),
-        offset: z.number().int().min(0).default(0),
-      },
+    request: {
+      query: historyQuerySchema,
     },
     responses: {
-      "200": {
-        schema: z.object({
-          monitors: z.array(HistoryResponse),
-        }),
+      200: {
         description: "履歴取得成功",
-      },
-      "400": {
-        description: "無効なリクエスト",
-      },
-      "500": {
-        description: "サーバーエラー",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: z.any(),
+            }),
+          },
+        },
       },
     },
   });
 
-  router.get(
-    "/history",
+  router.openapi(
+    historyRoute,
     _cacheableHandler(async (c) => {
-      const limitParam = c.req.query("limit");
-      const offsetParam = c.req.query("offset");
-      const limit = limitParam ? parseInt(limitParam, 10) : 100;
-      const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+      const { limit, offset } = historyQuerySchema.parse({
+        limit: c.req.query("limit"),
+        offset: c.req.query("offset"),
+      });
 
       const histories = await getAllMonitorsHistoryHandler({ limit, offset });
-      return c.json({
-        success: true,
-        data: histories,
-      });
+      return c.json(
+        {
+          success: true,
+          data: histories,
+        },
+        200
+      );
     })
   );
 
-  // GET api:history/:monitorId - 特定のモニターの履歴を取得
-  registerEndpoint({
+  const historyByMonitorRoute = createRoute({
     method: "get",
-    path: "/history/:monitorId",
+    path: "/history/{monitorId}",
     tags: ["History"],
     summary: "特定のモニターの履歴を取得",
     description: "指定されたモニターの詳細な履歴を取得します（ページング対応）",
-    operationId: "getMonitorHistory",
-    parameters: {
-      path: {
-        monitorId: UUIDSchema,
-      },
-      query: {
-        limit: z.number().int().min(1).max(1000).default(100),
-        offset: z.number().int().min(0).default(0),
-      },
+    request: {
+      params: z.object({
+        monitorId: monitorIdSchema,
+      }),
+      query: historyQuerySchema,
     },
     responses: {
-      "200": {
-        schema: HistoryResponse,
+      200: {
         description: "履歴取得成功",
-      },
-      "400": {
-        description: "無効なリクエスト",
-      },
-      "404": {
-        description: "モニターが見つかりません",
-      },
-      "500": {
-        description: "サーバーエラー",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: z.any(),
+            }),
+          },
+        },
       },
     },
   });
 
-  router.get(
-    "/history/:monitorId",
+  router.openapi(
+    historyByMonitorRoute,
     _cacheableHandler(async (c) => {
-      const monitorId = c.req.param("monitorId");
-      const limitParam = c.req.query("limit");
-      const offsetParam = c.req.query("offset");
-      const limit = limitParam ? parseInt(limitParam, 10) : 100;
-      const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+      const monitorId = monitorIdSchema.parse(c.req.param("monitorId"));
+      const { limit, offset } = historyQuerySchema.parse({
+        limit: c.req.query("limit"),
+        offset: c.req.query("offset"),
+      });
 
       const history = await getMonitorHistoryHandler({
         monitorId,
@@ -221,67 +270,281 @@ export const createApiRouter = () => {
         offset,
       });
 
-      return c.json({
-        success: true,
-        data: history,
-      });
+      return c.json(
+        {
+          success: true,
+          data: history,
+        },
+        200
+      );
     })
   );
 
-  /**
-   * 統計情報エンドポイント
-   */
-  // GET api:stats/:monitorId - モニターの統計情報を取得
-  registerEndpoint({
+  const statsRoute = createRoute({
     method: "get",
-    path: "/stats/:monitorId",
+    path: "/stats/{monitorId}",
     tags: ["Monitors"],
     summary: "モニターの統計情報を取得",
     description: "指定されたモニターの稼働率と平均応答時間を取得します",
-    operationId: "getMonitorStats",
-    parameters: {
-      path: {
-        monitorId: UUIDSchema,
-      },
-      query: {
-        limit: z.number().int().min(1).max(1000).default(100),
-      },
+    request: {
+      params: z.object({
+        monitorId: monitorIdSchema,
+      }),
+      query: statsQuerySchema,
     },
     responses: {
-      "200": {
-        schema: HistoryStats,
+      200: {
         description: "統計情報取得成功",
-      },
-      "400": {
-        description: "無効なリクエスト",
-      },
-      "404": {
-        description: "モニターが見つかりません",
-      },
-      "500": {
-        description: "サーバーエラー",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: z.any(),
+            }),
+          },
+        },
       },
     },
   });
 
-  router.get(
-    "/stats/:monitorId",
+  router.openapi(
+    statsRoute,
     _cacheableHandler(async (c) => {
-      const monitorId = c.req.param("monitorId");
-      const limitParam = c.req.query("limit");
-      const limit = limitParam ? parseInt(limitParam, 10) : 100;
+      const monitorId = monitorIdSchema.parse(c.req.param("monitorId"));
+      const { limit } = statsQuerySchema.parse({
+        limit: c.req.query("limit"),
+      });
 
       const stats = await getMonitorStatsHandler({
         monitorId,
         limit,
       });
 
-      return c.json({
-        success: true,
-        data: stats,
-      });
+      return c.json(
+        {
+          success: true,
+          data: stats,
+        },
+        200
+      );
     })
   );
+
+  const listTokensRoute = createRoute({
+    method: "get",
+    path: "/auth/tokens",
+    tags: ["Auth"],
+    summary: "管理トークンの一覧を取得",
+    description: "管理対象 API トークンのメタデータを返します（生トークンは返しません）",
+    responses: {
+      403: {
+        description: "管理権限がありません",
+        content: {
+          "application/json": {
+            schema: z.object({
+              success: z.literal(false),
+              message: z.string(),
+            }),
+          },
+        },
+      },
+      200: {
+        description: "トークン一覧取得成功",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: z.array(managedTokenSchema),
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  router.openapi(listTokensRoute, async (c) => {
+    const forbidden = requireAdmin(c);
+    if (forbidden) {
+      return forbidden;
+    }
+
+    const tokens = await listManagedTokens();
+    return c.json({ success: true, data: tokens }, 200);
+  });
+
+  const createTokenRoute = createRoute({
+    method: "post",
+    path: "/auth/tokens",
+    tags: ["Auth"],
+    summary: "管理トークンを発行",
+    description:
+      "新しい API トークンを作成します（トークン文字列はこのレスポンスでのみ返されます）",
+    request: {
+      body: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: createManagedTokenBodySchema,
+          },
+        },
+      },
+    },
+    responses: {
+      403: {
+        description: "管理権限がありません",
+        content: {
+          "application/json": {
+            schema: z.object({
+              success: z.literal(false),
+              message: z.string(),
+            }),
+          },
+        },
+      },
+      201: {
+        description: "トークン作成成功",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: z.object({
+                token: z.string(),
+                tokenInfo: managedTokenSchema,
+              }),
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  router.openapi(createTokenRoute, async (c) => {
+    const forbidden = requireAdmin(c);
+    if (forbidden) {
+      return forbidden;
+    }
+
+    const body = createManagedTokenBodySchema.parse(await c.req.json());
+    const created = await createManagedToken(body);
+
+    return c.json(
+      {
+        success: true,
+        data: {
+          token: created.token,
+          tokenInfo: created.record,
+        },
+      },
+      201
+    );
+  });
+
+  const updateTokenRoute = createRoute({
+    method: "patch",
+    path: "/auth/tokens/{tokenId}",
+    tags: ["Auth"],
+    summary: "管理トークンを更新",
+    description: "トークンごとの有効状態・管理権限・レート制限・設定を更新します",
+    request: {
+      params: z.object({
+        tokenId: UUIDSchema,
+      }),
+      body: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: updateManagedTokenBodySchema,
+          },
+        },
+      },
+    },
+    responses: {
+      403: {
+        description: "管理権限がありません",
+        content: {
+          "application/json": {
+            schema: z.object({
+              success: z.literal(false),
+              message: z.string(),
+            }),
+          },
+        },
+      },
+      200: {
+        description: "トークン更新成功",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: managedTokenSchema,
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  router.openapi(updateTokenRoute, async (c) => {
+    const forbidden = requireAdmin(c);
+    if (forbidden) {
+      return forbidden;
+    }
+
+    const tokenId = UUIDSchema.parse(c.req.param("tokenId"));
+    const body = updateManagedTokenBodySchema.parse(await c.req.json());
+    const updated = await updateManagedTokenById(tokenId, body);
+
+    return c.json(
+      {
+        success: true,
+        data: updated,
+      },
+      200
+    );
+  });
+
+  const revokeTokenRoute = createRoute({
+    method: "delete",
+    path: "/auth/tokens/{tokenId}",
+    tags: ["Auth"],
+    summary: "管理トークンを失効",
+    description: "指定トークンを失効（isActive=false）します",
+    request: {
+      params: z.object({
+        tokenId: UUIDSchema,
+      }),
+    },
+    responses: {
+      403: {
+        description: "管理権限がありません",
+        content: {
+          "application/json": {
+            schema: z.object({
+              success: z.literal(false),
+              message: z.string(),
+            }),
+          },
+        },
+      },
+      200: {
+        description: "トークン失効成功",
+        content: {
+          "application/json": {
+            schema: successSchema.extend({
+              data: managedTokenSchema,
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  router.openapi(revokeTokenRoute, async (c) => {
+    const forbidden = requireAdmin(c);
+    if (forbidden) {
+      return forbidden;
+    }
+
+    const tokenId = UUIDSchema.parse(c.req.param("tokenId"));
+    const revoked = await revokeManagedTokenById(tokenId);
+    return c.json({ success: true, data: revoked }, 200);
+  });
 
   return router;
 };

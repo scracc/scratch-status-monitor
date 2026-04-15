@@ -49,3 +49,10 @@ export {
   StatusResponse,
   type StatusResponse as StatusResponseType,
 } from "./status.js";
+// Token関連
+export type {
+  AuthTokenPrincipal,
+  CreateManagedTokenInput,
+  ManagedTokenRecord,
+  UpdateManagedTokenInput,
+} from "./token.js";

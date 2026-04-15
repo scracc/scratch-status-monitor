@@ -21,7 +21,7 @@ cp .dev.vars.example .dev.vars
 `.dev.vars` の設定例：
 
 ```bash
-# API Bearer 認証トークン（任意）
+# API Bearer 認証トークン（ブートストラップ用 / 任意）
 API_TOKEN=your-secret-token-here
 
 # 環境モード
@@ -48,6 +48,14 @@ npm run cf-typegen
 
 Bearer 認証で保護されています。環境に応じて適用範囲が変わります。
 
+### 認証方式
+
+- `API_TOKEN`（環境変数）
+  - 後方互換と初期管理者トークンとして利用できます
+- 管理トークン（Supabase `api_tokens` テーブル）
+  - API から発行・更新・失効できます
+  - トークンごとに `rate_limit_per_minute` と `settings` を持てます
+
 ### 本番環境 (ENVIRONMENT=production)
 
 - **全てのルート**に認証が必要
@@ -60,6 +68,7 @@ curl -H "Authorization: Bearer your-secret-token-here" \
 ### 開発環境 (ENVIRONMENT=development)
 
 以下のルートは認証**不要**:
+
 - `/` - ルートエンドポイント
 - `/test/*` - テストエンドポイント
 - `/docs` - API ドキュメント (Scalar UI)
@@ -74,7 +83,31 @@ curl -H "Authorization: Bearer your-token" \
 
 ### 認証の無効化
 
-開発環境で全ての認証を無効にする場合は、`.dev.vars` から `API_TOKEN` を削除してください。
+開発環境で `/test/*`, `/debug/*`, `/docs`, `/openapi.json`, `/` は認証不要です。
+それ以外はトークン認証が必要です。
+
+## トークン管理 API
+
+以下の管理 API は `admin` 権限トークンで利用できます。
+
+- `GET /auth/tokens` - トークン一覧（生トークンは返さない）
+- `POST /auth/tokens` - トークン発行（生トークンはこのレスポンスでのみ返却）
+- `PATCH /auth/tokens/:tokenId` - トークン設定更新
+- `DELETE /auth/tokens/:tokenId` - トークン失効
+
+### 例: トークンを発行
+
+```bash
+curl -X POST http://localhost:8787/auth/tokens \
+  -H "Authorization: Bearer your-admin-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "monitoring-client",
+    "rateLimitPerMinute": 120,
+    "isAdmin": false,
+    "settings": {"project": "frontend"}
+  }'
+```
 
 ## テストエンドポイント
 
@@ -92,9 +125,10 @@ npm run deploy
 
 デプロイ時には Cloudflare Dashboard で以下の環境変数を設定してください：
 
-- `API_TOKEN` - API 認証トークン（必須）
+- `API_TOKEN` - 初期管理者トークン（推奨）
 - `ENVIRONMENT` - `production` に設定
-
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 ## API ドキュメント
 
 - OpenAPI 仕様: `/openapi.json`

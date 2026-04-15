@@ -1,0 +1,23 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
+  "root": false,
+  "extends": "//",
+  "files": {
+    "includes": ["**/*", "!**/src/routeTree.gen.ts", "!**/src/styles.css"]
+  },
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "a11y": {
+        "useSemanticElements": "warn",
+        "useKeyWithClickEvents": "warn",
+        "noSvgWithoutTitle": "warn"
+      }
+    }
+  }
+}
