@@ -6,8 +6,9 @@ import { ConnectionSetupPanel } from "@/components/connection-setup-panel";
 import { CreateTokenForm } from "@/components/create-token-form";
 import { TokenCreatedDialog } from "@/components/token-created-dialog";
 import { TokenList } from "@/components/token-list";
+import { Button } from "@/components/ui/button";
 import type { ApiConnectionConfig } from "@/lib/connection-config";
-import { loadConnectionConfig } from "@/lib/connection-config";
+import { loadConnectionConfig, onConnectionConfigChanged } from "@/lib/connection-config";
 import type { ManagedToken } from "@/lib/token-api";
 import { listManagedTokens } from "@/lib/token-api";
 
@@ -19,11 +20,20 @@ function TokenManagementPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [isConnectionEditorOpen, setIsConnectionEditorOpen] = useState(false);
 
   // 設定の読み込み
   useEffect(() => {
     const savedConfig = loadConnectionConfig();
     setConfig(savedConfig);
+
+    return onConnectionConfigChanged(() => {
+      const nextConfig = loadConnectionConfig();
+      setConfig(nextConfig);
+      if (!nextConfig) {
+        setTokens([]);
+      }
+    });
   }, []);
 
   // トークン一覧の取得
@@ -60,6 +70,7 @@ function TokenManagementPage() {
   const handleConfigured = useCallback(() => {
     const savedConfig = loadConnectionConfig();
     setConfig(savedConfig);
+    setIsConnectionEditorOpen(false);
   }, []);
 
   const handleTokenCreated = useCallback(
@@ -85,6 +96,10 @@ function TokenManagementPage() {
 
   const handleCreatedDialogClose = useCallback(() => {
     setCreatedToken(null);
+  }, []);
+
+  const handleOpenConnectionEditor = useCallback(() => {
+    setIsConnectionEditorOpen((prev) => !prev);
   }, []);
 
   return (
@@ -125,12 +140,25 @@ function TokenManagementPage() {
             </div>
 
             <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm">
-              <p className="font-semibold mb-2">接続情報</p>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="font-semibold">接続情報</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenConnectionEditor}
+                >
+                  {isConnectionEditorOpen ? "閉じる" : "接続ユーザーを追加/編集"}
+                </Button>
+              </div>
               <div className="space-y-1 font-mono text-xs text-muted-foreground">
+                <p>ユーザー: {config.name ?? "未設定"}</p>
                 <p>ベースURL: {config.baseUrl}</p>
                 <p>トークン: {maskedToken}</p>
               </div>
             </div>
+
+            {isConnectionEditorOpen && <ConnectionSetupPanel onConfigured={handleConfigured} />}
           </div>
         )}
       </div>
