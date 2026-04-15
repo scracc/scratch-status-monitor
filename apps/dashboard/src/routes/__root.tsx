@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/header";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -39,6 +40,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased [--header-height:calc(--spacing(14))]">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Toaster />
           <SidebarProvider className="flex flex-col">
             <SiteHeader />
             <div className="flex flex-1">

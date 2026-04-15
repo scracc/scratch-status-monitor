@@ -1,73 +1,143 @@
+"use client";
+
 import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ConnectionSetupPanel } from "@/components/connection-setup-panel";
+import { CreateTokenForm } from "@/components/create-token-form";
+import { TokenCreatedDialog } from "@/components/token-created-dialog";
+import { TokenList } from "@/components/token-list";
+import type { ApiConnectionConfig } from "@/lib/connection-config";
+import { loadConnectionConfig } from "@/lib/connection-config";
+import type { ManagedToken } from "@/lib/token-api";
+import { listManagedTokens } from "@/lib/token-api";
 
-export const Route = createFileRoute("/")({ component: App });
+export const Route = createFileRoute("/")({ component: TokenManagementPage });
 
-function App() {
+function TokenManagementPage() {
+  const [config, setConfig] = useState<ApiConnectionConfig | null>(null);
+  const [tokens, setTokens] = useState<ManagedToken[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
+
+  // 設定の読み込み
+  useEffect(() => {
+    const savedConfig = loadConnectionConfig();
+    setConfig(savedConfig);
+  }, []);
+
+  // トークン一覧の取得
+  const fetchTokens = useCallback(async () => {
+    if (!config) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const fetchedTokens = await listManagedTokens({
+        data: {
+          baseUrl: config.baseUrl,
+          bearerToken: config.bearerToken,
+        },
+      });
+      setTokens(fetchedTokens);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "不明なエラーが発生しました";
+      setError(message);
+      console.error("Failed to fetch tokens:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [config]);
+
+  // 設定変更時にトークンを再取得
+  useEffect(() => {
+    if (config) {
+      fetchTokens();
+    }
+  }, [config, fetchTokens]);
+
+  const handleConfigured = useCallback(() => {
+    const savedConfig = loadConnectionConfig();
+    setConfig(savedConfig);
+  }, []);
+
+  const handleTokenCreated = useCallback(
+    (token: string) => {
+      setCreatedToken(token);
+      fetchTokens();
+    },
+    [fetchTokens]
+  );
+
+  const handleTokenCreationError = useCallback((err: Error) => {
+    setError(err.message);
+  }, []);
+
+  const maskedToken = useMemo(() => {
+    if (!config) {
+      return null;
+    }
+    return `${config.bearerToken.substring(0, 10)}...${config.bearerToken.substring(
+      config.bearerToken.length - 10
+    )}`;
+  }, [config]);
+
+  const handleCreatedDialogClose = useCallback(() => {
+    setCreatedToken(null);
+  }, []);
+
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
-        <p className="island-kicker mb-3">TanStack Start Base Template</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl leading-[1.02] font-bold tracking-tight text-[var(--sea-ink)] sm:text-6xl">
-          Start simple, ship quickly.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-[var(--sea-ink-soft)] sm:text-lg">
-          This base starter intentionally keeps things light: two routes, clean structure, and the
-          essentials you need to build from scratch.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/about"
-            className="rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.14)] px-5 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(79,184,178,0.24)]"
-          >
-            About This Starter
-          </a>
-          <a
-            href="https://tanstack.com/router"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-[rgba(23,58,64,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(23,58,64,0.35)]"
-          >
-            Router Guide
-          </a>
+    <main className="w-full flex-1 overflow-auto p-4 sm:p-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">トークン管理</h1>
+          <p className="mt-2 text-muted-foreground">
+            Scratch Status Monitor API のトークンを管理します
+          </p>
         </div>
-      </section>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Type-Safe Routing", "Routes and links stay in sync across every page."],
-          ["Server Functions", "Call server code from your UI without creating API boilerplate."],
-          ["Streaming by Default", "Ship progressively rendered responses for faster experiences."],
-          ["Tailwind Native", "Design quickly with utility-first styling and reusable tokens."],
-        ].map(([title, desc], index) => (
-          <article
-            key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-5"
-            style={{ animationDelay: `${index * 90 + 80}ms` }}
-          >
-            <h2 className="mb-2 text-base font-semibold text-[var(--sea-ink)]">{title}</h2>
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{desc}</p>
-          </article>
-        ))}
-      </section>
+        {!config ? (
+          <ConnectionSetupPanel onConfigured={handleConfigured} />
+        ) : (
+          <div className="space-y-6">
+            {error && (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+                <p className="text-sm font-medium text-destructive">{error}</p>
+              </div>
+            )}
 
-      <section className="island-shell mt-8 rounded-2xl p-6">
-        <p className="island-kicker mb-2">Quick Start</p>
-        <ul className="m-0 list-disc space-y-2 pl-5 text-sm text-[var(--sea-ink-soft)]">
-          <li>
-            Edit <code>src/routes/index.tsx</code> to customize the home page.
-          </li>
-          <li>
-            Update <code>src/components/Header.tsx</code> and <code>src/components/Footer.tsx</code>{" "}
-            for brand links.
-          </li>
-          <li>
-            Add routes in <code>src/routes</code> and tweak visual tokens in{" "}
-            <code>src/styles.css</code>.
-          </li>
-        </ul>
-      </section>
+            <div>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-2xl font-semibold">トークン一覧</h2>
+                <CreateTokenForm
+                  config={config}
+                  onSuccess={handleTokenCreated}
+                  onError={handleTokenCreationError}
+                />
+              </div>
+
+              {isLoading ? (
+                <div className="text-center text-muted-foreground">読み込み中...</div>
+              ) : (
+                <TokenList tokens={tokens} config={config} onRefresh={fetchTokens} />
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm">
+              <p className="font-semibold mb-2">接続情報</p>
+              <div className="space-y-1 font-mono text-xs text-muted-foreground">
+                <p>ベースURL: {config.baseUrl}</p>
+                <p>トークン: {maskedToken}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {createdToken && (
+        <TokenCreatedDialog token={createdToken} onClose={handleCreatedDialogClose} />
+      )}
     </main>
   );
 }

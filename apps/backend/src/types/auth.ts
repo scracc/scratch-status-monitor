@@ -1,39 +1,12 @@
-export interface AuthTokenPrincipal {
-  source: "legacy" | "managed";
-  tokenId: string | null;
-  name: string;
-  isAdmin: boolean;
-  rateLimitPerMinute: number;
-  settings: Record<string, unknown>;
-}
+/**
+ * 認証・トークン管理関連の型定義
+ *
+ * @note 共有型は @scracc/ssm-types からインポートしています
+ */
 
-export interface ManagedTokenRecord {
-  id: string;
-  name: string;
-  tokenPrefix: string;
-  isActive: boolean;
-  isAdmin: boolean;
-  rateLimitPerMinute: number;
-  settings: Record<string, unknown>;
-  lastUsedAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateManagedTokenInput {
-  name: string;
-  isAdmin?: boolean;
-  rateLimitPerMinute?: number;
-  settings?: Record<string, unknown>;
-  expiresAt?: string | null;
-}
-
-export interface UpdateManagedTokenInput {
-  name?: string;
-  isActive?: boolean;
-  isAdmin?: boolean;
-  rateLimitPerMinute?: number;
-  settings?: Record<string, unknown>;
-  expiresAt?: string | null;
-}
+export type {
+  AuthTokenPrincipal,
+  CreateManagedTokenInput,
+  ManagedTokenRecord,
+  UpdateManagedTokenInput,
+} from "@scracc/ssm-types";

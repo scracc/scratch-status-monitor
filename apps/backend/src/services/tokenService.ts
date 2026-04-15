@@ -9,6 +9,7 @@ import { getSupabaseClient } from "./supabaseClient";
 
 const LEGACY_TOKEN_NAME = "legacy-env-token";
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 60;
+const LEGACY_TOKEN_RATE_LIMIT = 60_000; // 環境変数トークンは無制限（分単位の最大値）
 const TOKEN_SECRET_BYTES = 32;
 const TOKEN_PREFIX_LENGTH = 12;
 
@@ -80,13 +81,15 @@ export async function authenticateApiToken(
 ): Promise<AuthTokenPrincipal | null> {
   const legacyToken = env.API_TOKEN;
 
+  // 環境変数 API_TOKEN が設定されている場合、最高権限として認証する
+  // これはブートストラップ・緊急アクセス用のトークンとして機能
   if (legacyToken && rawToken === legacyToken) {
     return {
       source: "legacy",
       tokenId: null,
       name: LEGACY_TOKEN_NAME,
       isAdmin: true,
-      rateLimitPerMinute: DEFAULT_RATE_LIMIT_PER_MINUTE,
+      rateLimitPerMinute: LEGACY_TOKEN_RATE_LIMIT,
       settings: {},
     };
   }

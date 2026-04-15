@@ -16,7 +16,7 @@ export function NavSecondary({
   items: {
     title: string;
     url: string;
-    icon: LucideIcon;
+    icon?: LucideIcon;
   }[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
   return (
@@ -28,8 +28,8 @@ export function NavSecondary({
               <SidebarMenuButton
                 size="sm"
                 render={
-                  <a href={item.url}>
-                    <item.icon />
+                  <a href={item.url} target="_blank" rel="noopener noreferrer">
+                    {item.icon ? <item.icon /> : null}
                     <span>{item.title}</span>
                   </a>
                 }
