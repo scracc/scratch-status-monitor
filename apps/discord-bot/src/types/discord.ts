@@ -2,6 +2,8 @@ import {
   type APIApplicationCommandInteraction,
   type APIInteraction,
   type APIMessageComponentInteraction,
+  type APIMessageStringSelectInteractionData,
+  ComponentType,
   InteractionType,
   type RESTPostAPIApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
@@ -27,6 +29,10 @@ export type BotContext = Context<BotEnv>;
 export interface DiscordCommand {
   definition: RESTPostAPIApplicationCommandsJSONBody;
   execute: (interaction: APIApplicationCommandInteraction, c: BotContext) => Response;
+  componentHandlers?: Record<
+    string,
+    (interaction: APIMessageComponentInteraction, c: BotContext) => Response
+  >;
 }
 
 export function isCommandInteraction(
@@ -39,4 +45,12 @@ export function isComponentInteraction(
   interaction: DiscordInteraction
 ): interaction is APIMessageComponentInteraction {
   return interaction.type === InteractionType.MessageComponent;
+}
+
+export function isStringSelectInteraction(
+  interaction: APIMessageComponentInteraction
+): interaction is APIMessageComponentInteraction & {
+  data: APIMessageStringSelectInteractionData;
+} {
+  return interaction.data.component_type === ComponentType.StringSelect;
 }
