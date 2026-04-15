@@ -1,12 +1,12 @@
-import { isStringSelectInteraction } from "../types/discord";
-import { defineChatInputCommand } from "../utils/command.factory";
+import { isStringSelectInteraction } from "../../types/discord";
+import { defineChatInputCommand } from "../../utils/command.factory";
 import {
   messageResponse,
   messageUpdateResponse,
   selectMenuResponse,
   selectMenuUpdateResponse,
-} from "../utils/discordResponses";
-import { appendPanelHistoryCode, closePanelWithHistory } from "../utils/panelHistory";
+} from "../../utils/discordResponses";
+import { appendPanelHistoryCode, closePanelWithHistory } from "../../utils/panelHistory";
 import { tokenPanelOptions, tokenPanelTitle } from "./token";
 
 const controlPanelTitle = "コントロールパネル";

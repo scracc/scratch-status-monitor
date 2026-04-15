@@ -1,10 +1,10 @@
 import { createCommandRegistry, createComponentHandlerRegistry } from "../utils/command.factory";
-import { controlPanel } from "./control-panel";
 import { help } from "./help";
 import { ping } from "./ping";
-import { token } from "./token";
+import { controlPanel } from "./control-panel";
+import { token } from "./control-panel/token";
 
-const commandList = [ping, help, token, controlPanel];
+const commandList = [ping, help, controlPanel, token];
 
 export const commands = createCommandRegistry(commandList);
 export const componentHandlers = createComponentHandlerRegistry(commandList);

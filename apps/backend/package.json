@@ -12,8 +12,7 @@
     "check": "biome check src/"
   },
   "dependencies": {
-    "@orpc/openapi": "^1.13.7",
-    "@orpc/server": "^1.13.7",
+    "@hono/zod-openapi": "^1.3.0",
     "@scalar/hono-api-reference": "^0.10.3",
     "@scracc/ssm-configs": "workspace:*",
     "@scracc/ssm-types": "workspace:*",

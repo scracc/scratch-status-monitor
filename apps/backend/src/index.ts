@@ -1,9 +1,9 @@
+import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
 import { showRoutes } from "hono/dev";
 import { createBearerAuthMiddleware } from "./middleware/bearerAuth";
 import { errorHandler } from "./middleware/errorHandler";
 import mainMiddleware from "./middleware/main";
-import { createOpenAPIRoutes } from "./openapi-routes";
 import { createApiRouter } from "./routes/api";
 import { initializeCacheService } from "./services/cacheService";
 import { runCleanup } from "./services/cleanupService";
@@ -12,7 +12,6 @@ import { createLogger } from "./services/logger";
 import { checkAllMonitors } from "./services/monitorService";
 import { initializeSupabaseClient } from "./services/supabaseClient";
 import type { Env } from "./types/env";
-import { generateOpenAPISchema } from "./utils/openapi";
 
 const logger = createLogger("Cron");
 
@@ -57,17 +56,25 @@ app.use("*", createBearerAuthMiddleware());
 const apiRouter = createApiRouter();
 app.route("", apiRouter);
 
-// OpenAPI ルートを統合
-const openAPIApp = await createOpenAPIRoutes();
-app.route("", openAPIApp);
-
-/**
- * OpenAPI スキーマを提供
- * エンドポイント登録後に生成されます
- */
-app.get("/openapi.json", (c) => {
-  return c.json(generateOpenAPISchema());
-});
+app.get(
+  "/docs",
+  Scalar({
+    url: "/openapi.json",
+    pageTitle: "Scratch Status Monitor API",
+    _integration: "hono",
+    hideClientButton: true,
+    authentication: {
+      preferredSecurityScheme: ["HTTP Bearer"],
+      securitySchemes: {
+        "HTTP Bearer": {
+          type: "http",
+          scheme: "bearer",
+          token: "your-secret-token-here",
+        },
+      },
+    },
+  })
+);
 
 app.get("/", (c) => {
   return c.json({

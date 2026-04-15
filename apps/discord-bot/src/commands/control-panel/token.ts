@@ -1,12 +1,12 @@
-import { isStringSelectInteraction } from "../types/discord";
-import { defineChatInputCommand } from "../utils/command.factory";
+import { isStringSelectInteraction } from "../../types/discord";
+import { defineChatInputCommand } from "../../utils/command.factory";
 import {
   messageResponse,
   messageUpdateResponse,
   selectMenuResponse,
   selectMenuUpdateResponse,
-} from "../utils/discordResponses";
-import { appendPanelHistoryCode, closePanelWithHistory } from "../utils/panelHistory";
+} from "../../utils/discordResponses";
+import { appendPanelHistoryCode, closePanelWithHistory } from "../../utils/panelHistory";
 
 export const tokenPanelTitle = "トークンの管理を行います";
 const tokenPanelSelectId = "token_action";
