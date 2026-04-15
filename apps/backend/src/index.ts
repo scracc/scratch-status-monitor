@@ -11,6 +11,7 @@ import { initializeHistoryService } from "./services/historyService";
 import { createLogger } from "./services/logger";
 import { checkAllMonitors } from "./services/monitorService";
 import { initializeSupabaseClient } from "./services/supabaseClient";
+import type { AuthTokenPrincipal } from "./types/auth";
 import type { Env } from "./types/env";
 
 const logger = createLogger("Cron");
@@ -23,7 +24,7 @@ interface ScheduledEvent {
   scheduledTime: number;
 }
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: { auth: AuthTokenPrincipal } }>();
 
 let servicesInitialized = false;
 

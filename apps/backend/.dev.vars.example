@@ -7,9 +7,8 @@
 # production: テストルートが無効
 ENVIRONMENT=development
 
-# API Bearer 認証トークン
-# 未設定の場合は認証が無効になります
-# 本番環境では必ず設定してください
+# API Bearer 認証トークン（後方互換 / ブートストラップ用）
+# 管理トークンを最初に作成するための admin トークンとして使えます
 API_TOKEN=your-secret-token-here
 
 # Supabase 設定 (ローカル開発環境)

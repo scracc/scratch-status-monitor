@@ -3,7 +3,7 @@
  */
 export interface Env {
   /**
-   * API Bearer 認証トークン
+   * API Bearer 認証トークン（後方互換/ブートストラップ用）
    * 環境変数: API_TOKEN
    */
   API_TOKEN?: string;

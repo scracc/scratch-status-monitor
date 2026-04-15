@@ -21,7 +21,7 @@
   },
   // 環境変数の設定
   // ローカル開発用: .dev.vars ファイルに以下を設定してください
-  // API_TOKEN=your-secret-token-here
+  // API_TOKEN=your-bootstrap-admin-token
   // SUPABASE_URL=https://xxxxx.supabase.co
   // SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
   // ENVIRONMENT=development
