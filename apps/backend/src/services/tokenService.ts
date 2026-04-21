@@ -1,3 +1,6 @@
+import { and, desc, eq } from "drizzle-orm";
+import { withDb } from "../db/client";
+import { type ApiToken, apiTokens } from "../db/schema";
 import type {
   AuthTokenPrincipal,
   CreateManagedTokenInput,
@@ -5,7 +8,6 @@ import type {
   UpdateManagedTokenInput,
 } from "../types/auth";
 import type { Env } from "../types/env";
-import { getSupabaseClient } from "./supabaseClient";
 
 const LEGACY_TOKEN_NAME = "legacy-env-token";
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 60;
@@ -13,34 +15,27 @@ const LEGACY_TOKEN_RATE_LIMIT = 60_000; // 環境変数トークンは無制限�
 const TOKEN_SECRET_BYTES = 32;
 const TOKEN_PREFIX_LENGTH = 12;
 
-type ApiTokenRow = {
-  id: string;
-  name: string;
-  token_hash: string;
-  token_prefix: string;
-  is_active: boolean;
-  is_admin: boolean;
-  rate_limit_per_minute: number;
-  settings: Record<string, unknown> | null;
-  last_used_at: string | null;
-  expires_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+function toTokenSettings(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
 
-function toManagedTokenRecord(row: ApiTokenRow): ManagedTokenRecord {
+  return value as Record<string, unknown>;
+}
+
+function toManagedTokenRecord(row: ApiToken): ManagedTokenRecord {
   return {
     id: row.id,
     name: row.name,
-    tokenPrefix: row.token_prefix,
-    isActive: row.is_active,
-    isAdmin: row.is_admin,
-    rateLimitPerMinute: row.rate_limit_per_minute,
-    settings: row.settings ?? {},
-    lastUsedAt: row.last_used_at,
-    expiresAt: row.expires_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    tokenPrefix: row.tokenPrefix,
+    isActive: row.isActive,
+    isAdmin: row.isAdmin,
+    rateLimitPerMinute: row.rateLimitPerMinute,
+    settings: toTokenSettings(row.settings),
+    lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
+    expiresAt: row.expiresAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -95,59 +90,37 @@ export async function authenticateApiToken(
   }
 
   const hashedToken = await hashToken(rawToken);
-  const supabase = getSupabaseClient();
-
-  const { data, error } = await supabase
-    .from("api_tokens")
-    .select(
-      "id, name, token_hash, token_prefix, is_active, is_admin, rate_limit_per_minute, settings, last_used_at, expires_at, created_at, updated_at"
-    )
-    .eq("token_hash", hashedToken)
-    .eq("is_active", true)
-    .maybeSingle<ApiTokenRow>();
-
-  if (error) {
-    throw new Error(`トークン検証に失敗しました: ${error.message}`);
-  }
+  const data = await withDb((db) =>
+    db.query.apiTokens.findFirst({
+      where: and(eq(apiTokens.tokenHash, hashedToken), eq(apiTokens.isActive, true)),
+    })
+  );
 
   if (!data) {
     return null;
   }
 
-  if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) {
+  if (data.expiresAt && data.expiresAt.getTime() <= Date.now()) {
     return null;
   }
 
-  await supabase
-    .from("api_tokens")
-    .update({ last_used_at: new Date().toISOString() })
-    .eq("id", data.id);
+  await withDb((db) =>
+    db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.id, data.id))
+  );
 
   return {
     source: "managed",
     tokenId: data.id,
     name: data.name,
-    isAdmin: data.is_admin,
-    rateLimitPerMinute: data.rate_limit_per_minute,
-    settings: data.settings ?? {},
+    isAdmin: data.isAdmin,
+    rateLimitPerMinute: data.rateLimitPerMinute,
+    settings: toTokenSettings(data.settings),
   };
 }
 
 export async function listManagedTokens(): Promise<ManagedTokenRecord[]> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from("api_tokens")
-    .select(
-      "id, name, token_hash, token_prefix, is_active, is_admin, rate_limit_per_minute, settings, last_used_at, expires_at, created_at, updated_at"
-    )
-    .order("created_at", { ascending: false })
-    .returns<ApiTokenRow[]>();
-
-  if (error) {
-    throw new Error(`トークン一覧取得に失敗しました: ${error.message}`);
-  }
-
-  return (data ?? []).map(toManagedTokenRecord);
+  const rows = await withDb((db) => db.select().from(apiTokens).orderBy(desc(apiTokens.createdAt)));
+  return rows.map(toManagedTokenRecord);
 }
 
 export async function createManagedToken(
@@ -155,34 +128,26 @@ export async function createManagedToken(
 ): Promise<{ token: string; record: ManagedTokenRecord }> {
   const rawToken = generateRawToken();
   const hashedToken = await hashToken(rawToken);
-  const supabase = getSupabaseClient();
-
   const payload = {
     name: input.name,
-    token_hash: hashedToken,
-    token_prefix: tokenPrefix(rawToken),
-    is_active: true,
-    is_admin: input.isAdmin ?? false,
-    rate_limit_per_minute: input.rateLimitPerMinute ?? DEFAULT_RATE_LIMIT_PER_MINUTE,
+    tokenHash: hashedToken,
+    tokenPrefix: tokenPrefix(rawToken),
+    isActive: true,
+    isAdmin: input.isAdmin ?? false,
+    rateLimitPerMinute: input.rateLimitPerMinute ?? DEFAULT_RATE_LIMIT_PER_MINUTE,
     settings: input.settings ?? {},
-    expires_at: input.expiresAt ?? null,
+    expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
   };
 
-  const { data, error } = await supabase
-    .from("api_tokens")
-    .insert(payload)
-    .select(
-      "id, name, token_hash, token_prefix, is_active, is_admin, rate_limit_per_minute, settings, last_used_at, expires_at, created_at, updated_at"
-    )
-    .single<ApiTokenRow>();
-
-  if (error) {
-    throw new Error(`トークン作成に失敗しました: ${error.message}`);
+  const rows = await withDb((db) => db.insert(apiTokens).values(payload).returning());
+  const created = rows[0];
+  if (!created) {
+    throw new Error("トークン作成に失敗しました");
   }
 
   return {
     token: rawToken,
-    record: toManagedTokenRecord(data),
+    record: toManagedTokenRecord(created),
   };
 }
 
@@ -190,22 +155,22 @@ export async function updateManagedTokenById(
   tokenId: string,
   input: UpdateManagedTokenInput
 ): Promise<ManagedTokenRecord> {
-  const payload: Record<string, unknown> = {};
+  const payload: Partial<ApiToken> = {};
 
   if (input.name !== undefined) {
     payload.name = input.name;
   }
 
   if (input.isActive !== undefined) {
-    payload.is_active = input.isActive;
+    payload.isActive = input.isActive;
   }
 
   if (input.isAdmin !== undefined) {
-    payload.is_admin = input.isAdmin;
+    payload.isAdmin = input.isAdmin;
   }
 
   if (input.rateLimitPerMinute !== undefined) {
-    payload.rate_limit_per_minute = input.rateLimitPerMinute;
+    payload.rateLimitPerMinute = input.rateLimitPerMinute;
   }
 
   if (input.settings !== undefined) {
@@ -213,24 +178,18 @@ export async function updateManagedTokenById(
   }
 
   if (input.expiresAt !== undefined) {
-    payload.expires_at = input.expiresAt;
+    payload.expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
   }
 
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from("api_tokens")
-    .update(payload)
-    .eq("id", tokenId)
-    .select(
-      "id, name, token_hash, token_prefix, is_active, is_admin, rate_limit_per_minute, settings, last_used_at, expires_at, created_at, updated_at"
-    )
-    .single<ApiTokenRow>();
-
-  if (error) {
-    throw new Error(`トークン更新に失敗しました: ${error.message}`);
+  const rows = await withDb((db) =>
+    db.update(apiTokens).set(payload).where(eq(apiTokens.id, tokenId)).returning()
+  );
+  const updated = rows[0];
+  if (!updated) {
+    throw new Error("トークンが見つかりません");
   }
 
-  return toManagedTokenRecord(data);
+  return toManagedTokenRecord(updated);
 }
 
 export async function revokeManagedTokenById(tokenId: string): Promise<ManagedTokenRecord> {

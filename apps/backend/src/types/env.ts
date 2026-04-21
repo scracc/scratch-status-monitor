@@ -9,16 +9,10 @@ export interface Env {
   API_TOKEN?: string;
 
   /**
-   * Supabase URL
-   * 環境変数: SUPABASE_URL
+   * Drizzle 用 Postgres 接続文字列
+   * 環境変数: DATABASE_URL
    */
-  SUPABASE_URL?: string;
-
-  /**
-   * Supabase Service Role Key
-   * 環境変数: SUPABASE_SERVICE_ROLE_KEY
-   */
-  SUPABASE_SERVICE_ROLE_KEY?: string;
+  DATABASE_URL?: string;
 
   /**
    * 環境モード

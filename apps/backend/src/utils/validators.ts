@@ -3,13 +3,12 @@ import { z } from "zod";
 /**
  * UUIDバリデーション
  */
-export const UUIDSchema = z.string().uuid("有効なUUIDである必要があります");
+export const UUIDSchema = z.uuid("有効なUUIDである必要があります");
 
 /**
  * URLバリデーション
  */
 export const URLSchema = z
-  .string()
   .url("有効なURLである必要があります")
   .refine(
     (url) => url.startsWith("http://") || url.startsWith("https://"),

@@ -3,6 +3,7 @@
   "name": "scratchcore-ssm-backend",
   "main": "src/index.ts",
   "compatibility_date": "2026-01-31",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
   "routes": [
@@ -22,8 +23,7 @@
   // 環境変数の設定
   // ローカル開発用: .dev.vars ファイルに以下を設定してください
   // API_TOKEN=your-bootstrap-admin-token
-  // SUPABASE_URL=https://xxxxx.supabase.co
-  // SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+  // DATABASE_URL=postgresql://postgres:password@host:5432/postgres
   // ENVIRONMENT=development
   // API_BASE_URL=https://api.ssm.scra.cc
   "env": {

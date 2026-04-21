@@ -4,6 +4,10 @@
   "scripts": {
     "db:start": "nlx supabase start",
     "db:stop": "nlx supabase stop",
+    "db:drizzle:generate": "drizzle-kit generate",
+    "db:drizzle:migrate": "drizzle-kit migrate",
+    "db:drizzle:push": "drizzle-kit push",
+    "db:drizzle:studio": "drizzle-kit studio",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify --env production",
     "cron": "tsx .scripts/auto-cron.ts",
@@ -18,8 +22,9 @@
     "@scalar/hono-api-reference": "^0.10.3",
     "@scracc/ssm-configs": "workspace:*",
     "@scracc/ssm-types": "workspace:*",
-    "@supabase/supabase-js": "^2.99.1",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.12.7",
+    "postgres": "^3.4.9",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },
@@ -27,9 +32,11 @@
     "@biomejs/biome": "2.4.0",
     "@cloudflare/workers-types": "^4.20260313.1",
     "@types/node": "^24.1.0",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "supabase": "^2.78.1",
     "tsx": "^4.21.0",
-    "wrangler": "^4.73.0"
+    "wrangler": "^4.84.0"
   },
   "engines": {
     "node": "24.x"

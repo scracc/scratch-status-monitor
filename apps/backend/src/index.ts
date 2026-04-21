@@ -1,16 +1,16 @@
 import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
 import { showRoutes } from "hono/dev";
+import { initializeDb } from "./db/client";
 import { createBearerAuthMiddleware } from "./middleware/bearerAuth";
 import { errorHandler } from "./middleware/errorHandler";
 import mainMiddleware from "./middleware/main";
-import { createApiRouter } from "./routes/api";
+import { createApiRouter } from "./routes";
 import { initializeCacheService } from "./services/cacheService";
 import { runCleanup } from "./services/cleanupService";
 import { initializeHistoryService } from "./services/historyService";
 import { createLogger } from "./services/logger";
 import { checkAllMonitors } from "./services/monitorService";
-import { initializeSupabaseClient } from "./services/supabaseClient";
 import type { AuthTokenPrincipal } from "./types/auth";
 import type { Env } from "./types/env";
 
@@ -33,13 +33,13 @@ function ensureServices(env: Env): void {
     return;
   }
 
-  const supabase = initializeSupabaseClient(env);
-  initializeCacheService(supabase);
-  initializeHistoryService(supabase);
+  initializeDb(env);
+  initializeCacheService(true);
+  initializeHistoryService(true);
   servicesInitialized = true;
 }
 
-// Supabase クライアントと各サービスを初期化
+// Drizzle クライアントと各サービスを初期化
 // 注意: isolateスコープで1回だけ実行されます（リクエストごとではない）
 app.use("*", async (c, next) => {
   ensureServices(c.env);
@@ -92,7 +92,7 @@ showRoutes(app, {
 
 /**
  * Cron Trigger ハンドラー
- * v2.0: 全モニターをチェックし、Supabase に保存
+ * v2.0: 全モニターをチェックし、DB に保存
  */
 async function handleCron(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
   try {

@@ -6,7 +6,7 @@ const logger = createLogger("CleanupService");
 
 /**
  * v2.0: クリーンアップサービス
- * 古いデータをSupabaseから削除して、ストレージを最適化
+ * 古いデータをDBから削除して、ストレージを最適化
  *
  * 注意: Cloudflare WorkersではsetIntervalは使用せず、cronトリガーで定期実行します
  */

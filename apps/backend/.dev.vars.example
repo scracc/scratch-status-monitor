@@ -11,15 +11,6 @@ ENVIRONMENT=development
 # 管理トークンを最初に作成するための admin トークンとして使えます
 API_TOKEN=your-secret-token-here
 
-# Supabase 設定 (ローカル開発環境)
-# `supabase status` コマンドで確認できます
-# 本番環境では本番 Supabase プロジェクトの認証情報を使用してください
-
-# Supabase URL
-# ローカル: http://localhost:54321
-# 本番: https://your-project.supabase.co
-SUPABASE_URL=http://localhost:54321
-
-# Supabase Service Role Key
-# `supabase status` の service_role_key を使用
-SUPABASE_SERVICE_ROLE_KEY=
+# Drizzle(Postgres) 接続設定
+# Supabase の Connection string (URI) を設定してください
+DATABASE_URL=

@@ -1,12 +1,10 @@
 import { ssmrc } from "@scracc/ssm-configs";
 import { StatusResponse, type StatusResponse as StatusResponseType } from "@scracc/ssm-types";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { createLogger } from "./logger";
+import { eq } from "drizzle-orm";
+import { withDb } from "../db/client";
+import { statusCache } from "../db/schema";
 
-const logger = createLogger("CacheService");
 const CACHE_KEY = "monitor:status:latest";
-const CACHE_TABLE = "status_cache";
-
 function serializeStatusResponse(data: StatusResponseType): Record<string, unknown> {
   return {
     ...data,
@@ -41,7 +39,7 @@ export interface CacheService {
   get(): Promise<StatusResponseType | null>;
   set(data: StatusResponseType): Promise<void>;
   delete(): Promise<void>;
-  restoreFromBackup(): Promise<void>; // Supabase では no-op
+  restoreFromBackup(): Promise<void>; // DB 常時利用のため no-op
 }
 
 /**
@@ -81,13 +79,11 @@ class InMemoryCacheService implements CacheService {
 }
 
 /**
- * Supabase 対応の CacheService
- * - メモリに保持しつつ Supabase に永続化
+ * Drizzle 対応の CacheService
+ * - メモリに保持しつつ Postgres に永続化
  */
-class SupabaseCacheService implements CacheService {
+class DrizzleCacheService implements CacheService {
   private memoryCache: Map<string, { data: StatusResponseType; expiresAt: number }> = new Map();
-
-  constructor(private client: SupabaseClient) {}
 
   async get(): Promise<StatusResponseType | null> {
     const memEntry = this.memoryCache.get(CACHE_KEY);
@@ -99,30 +95,27 @@ class SupabaseCacheService implements CacheService {
       this.memoryCache.delete(CACHE_KEY);
     }
 
-    const { data, error } = await this.client
-      .from(CACHE_TABLE)
-      .select("data, expires_at")
-      .eq("key", CACHE_KEY)
-      .maybeSingle();
+    const row = await withDb((db) =>
+      db.query.statusCache.findFirst({
+        where: eq(statusCache.key, CACHE_KEY),
+        columns: {
+          data: true,
+          expiresAt: true,
+        },
+      })
+    );
 
-    if (error) {
-      logger.error("Failed to fetch cache from Supabase", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+    if (!row) {
       return null;
     }
 
-    if (!data) {
-      return null;
-    }
-
-    const expiresAt = new Date(data.expires_at as string).getTime();
+    const expiresAt = row.expiresAt.getTime();
     if (Date.now() > expiresAt) {
       await this.delete();
       return null;
     }
 
-    const revived = deserializeStatusResponse(data.data);
+    const revived = deserializeStatusResponse(row.data);
     this.memoryCache.set(CACHE_KEY, { data: revived, expiresAt });
     return revived;
   }
@@ -134,30 +127,32 @@ class SupabaseCacheService implements CacheService {
     const payload = {
       key: CACHE_KEY,
       data: serializeStatusResponse(data),
-      expires_at: new Date(expiresAt).toISOString(),
+      expiresAt: new Date(expiresAt),
+      updatedAt: new Date(),
     };
 
-    const { error } = await this.client.from(CACHE_TABLE).upsert(payload, { onConflict: "key" });
-
-    if (error) {
-      logger.error("Failed to upsert cache to Supabase", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    await withDb((db) =>
+      db
+        .insert(statusCache)
+        .values(payload)
+        .onConflictDoUpdate({
+          target: statusCache.key,
+          set: {
+            data: payload.data,
+            expiresAt: payload.expiresAt,
+            updatedAt: payload.updatedAt,
+          },
+        })
+    );
   }
 
   async delete(): Promise<void> {
     this.memoryCache.delete(CACHE_KEY);
-    const { error } = await this.client.from(CACHE_TABLE).delete().eq("key", CACHE_KEY);
-    if (error) {
-      logger.error("Failed to delete cache from Supabase", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    await withDb((db) => db.delete(statusCache).where(eq(statusCache.key, CACHE_KEY)));
   }
 
   async restoreFromBackup(): Promise<void> {
-    // Supabase では復元不要
+    // DB 常時利用のため復元不要
   }
 }
 
@@ -170,13 +165,13 @@ let cacheServiceInstance: CacheService | null = null;
  * CacheServiceを初期化または取得
  * @param kv Cloudflare Workers KVオブジェクト（オプション）
  */
-export function initializeCacheService(client?: SupabaseClient): CacheService {
+export function initializeCacheService(useDatabase: boolean = false): CacheService {
   if (cacheServiceInstance) {
     return cacheServiceInstance;
   }
 
-  if (client) {
-    cacheServiceInstance = new SupabaseCacheService(client);
+  if (useDatabase) {
+    cacheServiceInstance = new DrizzleCacheService();
   } else {
     // 開発環境ではメモリキャッシュを使用
     cacheServiceInstance = new InMemoryCacheService();

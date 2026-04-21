@@ -4,8 +4,10 @@ import {
   HistoryStats,
   type StatusCheckResult as StatusCheckResultType,
 } from "@scracc/ssm-types";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { count, desc, eq, lt } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { withDb } from "../db/client";
+import { historyRecords } from "../db/schema";
 import { createLogger } from "./logger";
 
 const logger = createLogger("HistoryService");
@@ -27,8 +29,6 @@ interface StoredHistoryData {
   lastUpdated: string;
 }
 
-const HISTORY_TABLE = "history_records";
-
 /**
  * v2.0: 時刻を指定間隔で切り捨て
  */
@@ -48,7 +48,7 @@ export interface HistoryService {
   getTotalCount(monitorId: string): Promise<number>;
   deleteRecords(monitorId: string): Promise<void>;
   cleanup(retentionDays: number): Promise<void>;
-  restoreFromBackup(): Promise<void>; // Supabase では no-op
+  restoreFromBackup(): Promise<void>; // DB 常時利用のため no-op
 }
 
 /**
@@ -140,34 +140,39 @@ class InMemoryHistoryService implements HistoryService {
 }
 
 /**
- * Supabase ベースの履歴サービス
+ * Drizzle ベースの履歴サービス
  */
-class SupabaseHistoryService implements HistoryService {
-  constructor(private client: SupabaseClient) {}
-
+class DrizzleHistoryService implements HistoryService {
   async saveRecord(monitorId: string, result: StatusCheckResultType): Promise<void> {
     const recordedAt = result.checkedAt;
     const bucketedAt = floorToInterval(recordedAt, ssmrc.cache.bucketIntervalMs);
 
-    const { error } = await this.client.from(HISTORY_TABLE).upsert(
-      {
-        id: uuidv4(),
-        monitor_id: monitorId,
-        status: result.status,
-        status_code: result.statusCode ?? null,
-        response_time: result.responseTime,
-        error_message: result.errorMessage ?? null,
-        recorded_at: recordedAt.toISOString(),
-        bucketed_at: bucketedAt.toISOString(),
-      },
-      { onConflict: "monitor_id,recorded_at" }
-    );
+    const row = {
+      id: uuidv4(),
+      monitorId,
+      status: result.status,
+      statusCode: result.statusCode ?? null,
+      responseTime: result.responseTime,
+      errorMessage: result.errorMessage ?? null,
+      recordedAt,
+      bucketedAt,
+    };
 
-    if (error) {
-      logger.error("Failed to insert history record", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    await withDb((db) =>
+      db
+        .insert(historyRecords)
+        .values(row)
+        .onConflictDoUpdate({
+          target: [historyRecords.monitorId, historyRecords.recordedAt],
+          set: {
+            status: row.status,
+            statusCode: row.statusCode,
+            responseTime: row.responseTime,
+            errorMessage: row.errorMessage,
+            bucketedAt: row.bucketedAt,
+          },
+        })
+    );
   }
 
   async getRecords(
@@ -175,83 +180,62 @@ class SupabaseHistoryService implements HistoryService {
     limit: number = 100,
     offset: number = 0
   ): Promise<HistoryRecord[]> {
-    const { data, error } = await this.client
-      .from(HISTORY_TABLE)
-      .select(
-        "id, monitor_id, status, status_code, response_time, error_message, recorded_at, bucketed_at"
-      )
-      .eq("monitor_id", monitorId)
-      .order("recorded_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    const rows = await withDb((db) =>
+      db
+        .select()
+        .from(historyRecords)
+        .where(eq(historyRecords.monitorId, monitorId))
+        .orderBy(desc(historyRecords.recordedAt))
+        .offset(offset)
+        .limit(limit)
+    );
 
-    if (error) {
-      logger.error("Failed to fetch records", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return [];
-    }
-
-    const ordered = (data ?? []).reverse();
+    const ordered = rows.reverse();
     return ordered.map((record) =>
       HistoryRecord.parse({
         id: record.id,
-        monitorId: record.monitor_id,
+        monitorId: record.monitorId,
         status: record.status,
-        statusCode: record.status_code ?? undefined,
-        responseTime: record.response_time,
-        errorMessage: record.error_message ?? undefined,
-        recordedAt: new Date(record.recorded_at),
-        bucketedAt: new Date(record.bucketed_at),
+        statusCode: record.statusCode ?? undefined,
+        responseTime: record.responseTime,
+        errorMessage: record.errorMessage ?? undefined,
+        recordedAt: record.recordedAt,
+        bucketedAt: record.bucketedAt,
       })
     );
   }
 
   async getTotalCount(monitorId: string): Promise<number> {
-    const { count, error } = await this.client
-      .from(HISTORY_TABLE)
-      .select("*", { count: "exact", head: true })
-      .eq("monitor_id", monitorId);
+    const rows = await withDb((db) =>
+      db
+        .select({ value: count() })
+        .from(historyRecords)
+        .where(eq(historyRecords.monitorId, monitorId))
+    );
 
-    if (error) {
-      logger.error("Failed to fetch count", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return 0;
-    }
-
-    return count ?? 0;
+    return Number(rows[0]?.value ?? 0);
   }
 
   async deleteRecords(monitorId: string): Promise<void> {
-    const { error } = await this.client.from(HISTORY_TABLE).delete().eq("monitor_id", monitorId);
-    if (error) {
-      logger.error("Failed to delete records", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    await withDb((db) => db.delete(historyRecords).where(eq(historyRecords.monitorId, monitorId)));
   }
 
   async cleanup(retentionDays: number): Promise<void> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-    const { error, count } = await this.client
-      .from(HISTORY_TABLE)
-      .delete({ count: "exact" })
-      .lt("recorded_at", cutoffDate.toISOString());
+    const deleted = await withDb((db) =>
+      db
+        .delete(historyRecords)
+        .where(lt(historyRecords.recordedAt, cutoffDate))
+        .returning({ id: historyRecords.id })
+    );
 
-    if (error) {
-      logger.error("Cleanup failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return;
-    }
-
-    logger.info("Cleanup completed", { recordsRemoved: count ?? 0 });
+    logger.info("Cleanup completed", { recordsRemoved: deleted.length });
   }
 
   async restoreFromBackup(): Promise<void> {
-    // Supabase では復元不要
+    // DB 常時利用のため復元不要
   }
 }
 
@@ -297,13 +281,13 @@ let historyServiceInstance: HistoryService | null = null;
 /**
  * 履歴サービスを初期化または取得
  */
-export function initializeHistoryService(client?: SupabaseClient): HistoryService {
+export function initializeHistoryService(useDatabase: boolean = false): HistoryService {
   if (historyServiceInstance) {
     return historyServiceInstance;
   }
 
-  if (client) {
-    historyServiceInstance = new SupabaseHistoryService(client);
+  if (useDatabase) {
+    historyServiceInstance = new DrizzleHistoryService();
   } else {
     historyServiceInstance = new InMemoryHistoryService();
   }

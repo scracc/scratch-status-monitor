@@ -107,6 +107,14 @@ export const token = defineChatInputCommand({
         );
       }
 
+      if (selectedValue === "view") {
+        return c.json(
+          messageResponse("TOKEN HERE", {
+            flags: 64,
+          })
+        );
+      }
+
       if (!historyCode) {
         return c.json(
           messageResponse("Unknown action", {
