@@ -19,7 +19,7 @@
     "@scracc/ssm-configs": "workspace:*",
     "@scracc/ssm-types": "workspace:*",
     "@supabase/supabase-js": "^2.99.1",
-    "hono": "^4.12.7",
+    "hono": "^4.12.14",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },
