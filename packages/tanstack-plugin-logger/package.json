@@ -1,5 +1,5 @@
 {
-  "name": "@scracc/tanstack-plugin-logger",
+  "name": "@repo/tanstack-plugin-logger",
   "version": "0.0.1",
   "description": "TanStack Router のロガー",
   "type": "module",

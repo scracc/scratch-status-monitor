@@ -35,15 +35,15 @@ importers:
       '@hono/zod-openapi':
         specifier: ^1.3.0
         version: 1.3.0(hono@4.12.8)(zod@4.3.6)
+      '@repo/configs':
+        specifier: workspace:*
+        version: link:../../packages/configs
+      '@repo/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@scalar/hono-api-reference':
         specifier: ^0.10.3
         version: 0.10.3(hono@4.12.8)
-      '@scracc/ssm-configs':
-        specifier: workspace:*
-        version: link:../../packages/configs
-      '@scracc/ssm-types':
-        specifier: workspace:*
-        version: link:../../packages/types
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@cloudflare/workers-types@4.20260313.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(postgres@3.4.9)
@@ -96,7 +96,7 @@ importers:
       '@fontsource-variable/inter':
         specifier: ^5.2.8
         version: 5.2.8
-      '@scracc/ssm-types':
+      '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types
       '@t3-oss/env-core':
@@ -278,18 +278,18 @@ importers:
       '@remixicon/react':
         specifier: ^4.9.0
         version: 4.9.0(react@19.2.4)
-      '@scracc/ssm-configs':
+      '@repo/configs':
         specifier: workspace:*
         version: link:../../packages/configs
-      '@scracc/ssm-types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@scracc/tanstack-plugin-headcontroller':
+      '@repo/tanstack-plugin-headcontroller':
         specifier: workspace:*
         version: link:../../packages/tanstack-plugin-headcontroller
-      '@scracc/tanstack-plugin-logger':
+      '@repo/tanstack-plugin-logger':
         specifier: workspace:*
         version: link:../../packages/tanstack-plugin-logger
+      '@repo/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@sentry/tanstackstart-react':
         specifier: ^10.43.0
         version: 10.43.0(react@19.2.4)(rollup@4.59.0)
@@ -493,7 +493,7 @@ importers:
       '@biomejs/biome':
         specifier: 2.4.0
         version: 2.4.0
-      '@scracc/ssm-types':
+      '@repo/types':
         specifier: workspace:*
         version: link:../types
       '@types/node':

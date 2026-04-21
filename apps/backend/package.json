@@ -1,5 +1,5 @@
 {
-  "name": "@scracc/ssm-backend",
+  "name": "@repo/backend",
   "type": "module",
   "scripts": {
     "db:start": "nlx supabase start",
@@ -20,8 +20,8 @@
   "dependencies": {
     "@hono/zod-openapi": "^1.3.0",
     "@scalar/hono-api-reference": "^0.10.3",
-    "@scracc/ssm-configs": "workspace:*",
-    "@scracc/ssm-types": "workspace:*",
+    "@repo/configs": "workspace:*",
+    "@repo/types": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.7",
     "postgres": "^3.4.9",

@@ -1,5 +1,5 @@
 {
-  "name": "@scracc/ssm-types",
+  "name": "@repo/types",
   "version": "0.0.1",
   "description": "バックエンド・フロントエンド間で共有する型定義パッケージ",
   "type": "module",

@@ -1,5 +1,5 @@
 {
-  "name": "@scracc/ssm-configs",
+  "name": "@repo/configs",
   "version": "0.0.1",
   "description": "バックエンド・フロントエンド間で共有する設定パッケージ",
   "type": "module",
@@ -31,7 +31,7 @@
   "packageManager": "pnpm@10.32.1",
   "devDependencies": {
     "@biomejs/biome": "2.4.0",
-    "@scracc/ssm-types": "workspace:*",
+    "@repo/types": "workspace:*",
     "@types/node": "^24.1.0",
     "typescript": "^5.9.3"
   },
