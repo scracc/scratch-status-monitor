@@ -1,12 +1,12 @@
-import { ssmrc } from "@scracc/ssm-configs";
-import type { StatusCheckResult as StatusCheckResultType, ssmrcType } from "@scracc/ssm-types";
+import { ssmrc } from "@repo/configs";
+import type { StatusCheckResult as StatusCheckResultType, ssmrcType } from "@repo/types";
 import {
   CategoryStatus,
   MonitorStatus,
   type MonitorStatus as MonitorStatusType,
   type StatusLevel as StatusLevelType,
   StatusResponse,
-} from "@scracc/ssm-types";
+} from "@repo/types";
 import { BACKEND_DEFAULTS } from "../config/defaults";
 
 /**

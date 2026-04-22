@@ -1,4 +1,4 @@
-import type { ssmrcType } from "@scracc/ssm-types";
+import type { ssmrcType } from "@repo/types";
 
 export const checks: ssmrcType.e.checks = {
   // ステータスチェックのタイムアウト時間（ミリ秒）

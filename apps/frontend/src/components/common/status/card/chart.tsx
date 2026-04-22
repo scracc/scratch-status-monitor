@@ -1,4 +1,4 @@
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 import type { Locale } from "intlayer";
 import { memo, useDeferredValue, useMemo } from "react";
 import { useLocale } from "react-intlayer";

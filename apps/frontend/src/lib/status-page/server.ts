@@ -1,4 +1,4 @@
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 import { logger } from "@scracc/tanstack-plugin-logger";
 import { createServerFn } from "@tanstack/react-start";
 import { getEnv } from "@/plugins/envrc";

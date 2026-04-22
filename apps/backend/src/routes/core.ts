@@ -96,7 +96,7 @@ export const createApiRouter = () => {
   });
 
   registerStatusRoutes(router);
-  registerTokenRoutes(router);
+  // registerTokenRoutes(router);
 
   return router;
 };

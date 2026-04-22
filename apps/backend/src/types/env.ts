@@ -27,4 +27,16 @@ export interface Env {
    * 例: https://api.ssm.scra.cc
    */
   API_BASE_URL?: string;
+
+  /**
+   * Discord OAuth クライアント ID
+   * 環境変数: SSO_DISCORD_CLIENT_ID
+   */
+  SSO_DISCORD_CLIENT_ID?: string;
+
+  /**
+   * Discord OAuth クライアントシークレット
+   * 環境変数: SSO_DISCORD_CLIENT_SECRET
+   */
+  SSO_DISCORD_CLIENT_SECRET?: string;
 }

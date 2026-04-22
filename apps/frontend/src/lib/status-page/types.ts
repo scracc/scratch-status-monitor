@@ -1,4 +1,4 @@
-import type { HistoryResponse as HistoryResponseSchema, SerializedInfer } from "@scracc/ssm-types";
+import type { HistoryResponse as HistoryResponseSchema, SerializedInfer } from "@repo/types";
 
 // シリアライズされた型（Date -> string）
 export type HistoryResponse = SerializedInfer<typeof HistoryResponseSchema>;

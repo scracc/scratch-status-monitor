@@ -1,4 +1,4 @@
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 import {
   formatDateShort as formatDateShortI18n,
   formatDateTime as formatDateTimeI18n,

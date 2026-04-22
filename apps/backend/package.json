@@ -18,10 +18,12 @@
     "check": "biome check src/"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.5",
     "@hono/zod-openapi": "^1.3.0",
-    "@scalar/hono-api-reference": "^0.10.3",
     "@repo/configs": "workspace:*",
     "@repo/types": "workspace:*",
+    "@scalar/hono-api-reference": "^0.10.3",
+    "better-auth": "^1.6.5",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.7",
     "postgres": "^3.4.9",

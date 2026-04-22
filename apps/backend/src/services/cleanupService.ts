@@ -1,4 +1,4 @@
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 import { getHistoryService } from "./historyService";
 import { createLogger } from "./logger";
 

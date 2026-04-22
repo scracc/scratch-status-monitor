@@ -1,5 +1,5 @@
-import { ssmrc } from "@scracc/ssm-configs";
-import { StatusResponse, type StatusResponse as StatusResponseType } from "@scracc/ssm-types";
+import { ssmrc } from "@repo/configs";
+import { StatusResponse, type StatusResponse as StatusResponseType } from "@repo/types";
 import { eq } from "drizzle-orm";
 import { withDb } from "../db/client";
 import { statusCache } from "../db/schema";

@@ -2,7 +2,7 @@ import type {
   ManagedTokenRecord,
   CreateManagedTokenInput as SharedCreateManagedTokenInput,
   UpdateManagedTokenInput as SharedUpdateManagedTokenInput,
-} from "@scracc/ssm-types";
+} from "@repo/types";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 

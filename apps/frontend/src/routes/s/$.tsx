@@ -1,4 +1,4 @@
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 import { logger } from "@scracc/tanstack-plugin-logger";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 

@@ -1,4 +1,4 @@
-import type { StatusResponse as StatusResponseType } from "@scracc/ssm-types";
+import type { StatusResponse as StatusResponseType } from "@repo/types";
 import { z } from "zod";
 import { APIError } from "../middleware/errorHandler";
 import { createLogger } from "../services/logger";

@@ -5,7 +5,7 @@ import type {
   SerializedInfer,
   StatusLevelType,
   StatusResponse as StatusResponseSchema,
-} from "@scracc/ssm-types";
+} from "@repo/types";
 
 // シリアライズされた型（Date -> string）
 export type StatusLevel = StatusLevelType;

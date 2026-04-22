@@ -1,4 +1,4 @@
-import { createErrorResponse, ERROR_MESSAGES, type ErrorCode } from "@scracc/ssm-types";
+import { createErrorResponse, ERROR_MESSAGES, type ErrorCode } from "@repo/types";
 import type { Context, MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { Env } from "../types/env";

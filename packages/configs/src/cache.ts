@@ -1,4 +1,4 @@
-import type { ssmrcType } from "@scracc/ssm-types";
+import type { ssmrcType } from "@repo/types";
 
 export const cache: ssmrcType.e.cache = {
   // キャッシュの有効期限（ミリ秒）

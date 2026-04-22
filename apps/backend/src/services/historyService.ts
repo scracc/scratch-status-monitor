@@ -1,9 +1,9 @@
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 import {
   HistoryRecord,
   HistoryStats,
   type StatusCheckResult as StatusCheckResultType,
-} from "@scracc/ssm-types";
+} from "@repo/types";
 import { count, desc, eq, lt } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { withDb } from "../db/client";

@@ -1,4 +1,4 @@
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 import { memo, useContext, useMemo } from "react";
 import { buildMemoryTrackData } from "@/lib/status-page/data";
 import type { HistoryResponse } from "@/lib/status-page/rc";

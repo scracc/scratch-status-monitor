@@ -1,4 +1,4 @@
-import type { ssmrcType } from "@scracc/ssm-types";
+import type { ssmrcType } from "@repo/types";
 
 export const monitors: ssmrcType.e.monitor = [
   {

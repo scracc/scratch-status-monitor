@@ -5,7 +5,7 @@
  *   tsx .scripts/auto-cron.ts
  */
 
-import { ssmrc } from "@scracc/ssm-configs";
+import { ssmrc } from "@repo/configs";
 
 /**
  * ログ出力（タイムスタンプ付き）

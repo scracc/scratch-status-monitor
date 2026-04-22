@@ -1,5 +1,5 @@
-import { ssmrc } from "@scracc/ssm-configs";
-import type { StatusResponse as StatusResponseType } from "@scracc/ssm-types";
+import { ssmrc } from "@repo/configs";
+import type { StatusResponse as StatusResponseType } from "@repo/types";
 import { getCacheService } from "./cacheService";
 import { getHistoryService } from "./historyService";
 import { checkMultipleMonitors } from "./statusChecker";

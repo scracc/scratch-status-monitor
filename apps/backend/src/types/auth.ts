@@ -1,7 +1,7 @@
 /**
  * 認証・トークン管理関連の型定義
  *
- * @note 共有型は @scracc/ssm-types からインポートしています
+ * @note 共有型は @repo/types からインポートしています
  */
 
 export type {
@@ -9,4 +9,4 @@ export type {
   CreateManagedTokenInput,
   ManagedTokenRecord,
   UpdateManagedTokenInput,
-} from "@scracc/ssm-types";
+} from "@repo/types";

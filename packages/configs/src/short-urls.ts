@@ -1,4 +1,4 @@
-import type { ssmrcType } from "@scracc/ssm-types";
+import type { ssmrcType } from "@repo/types";
 
 const ORG_NAME = "scracc";
 const REPO_SLUG = "scratch-status-monitor";

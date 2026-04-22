@@ -13,6 +13,7 @@ import { createLogger } from "./services/logger";
 import { checkAllMonitors } from "./services/monitorService";
 import type { AuthTokenPrincipal } from "./types/auth";
 import type { Env } from "./types/env";
+import { AuthRouter } from "./auth";
 
 const logger = createLogger("Cron");
 
@@ -56,6 +57,8 @@ app.use("*", createBearerAuthMiddleware());
 // (OpenAPI スキーマ生成の前に実行される必要があります)
 const apiRouter = createApiRouter();
 app.route("", apiRouter);
+
+app.route("", AuthRouter);
 
 app.get(
   "/docs",

@@ -1,4 +1,4 @@
-import type { ssmrcType } from "@scracc/ssm-types";
+import type { ssmrcType } from "@repo/types";
 
 import { cache } from "./cache";
 import { category } from "./category";
