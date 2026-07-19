@@ -118,6 +118,9 @@ const expandRoutes = ({ routes, policyIds }: { routes: string[]; policyIds: stri
     if (route.includes("/404")) {
       continue;
     }
+    if (route.includes("/api/")) {
+      continue;
+    }
 
     if (route === "/") {
       localizedRests.add("/");
